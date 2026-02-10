@@ -491,7 +491,9 @@ func (g *GitHub) appManifest(ctx core.SyncContext) string {
 			"pull_requests":    "write",
 			"repository_hooks": "write",
 			"statuses":         "write",
-			"administration":   "read",
+		},
+		"default_organization_permissions": map[string]string{
+			"administration": "read",
 		},
 		"setup_url":    fmt.Sprintf(`%s/api/v1/integrations/%s/setup`, ctx.BaseURL, ctx.Integration.ID().String()),
 		"redirect_url": fmt.Sprintf(`%s/api/v1/integrations/%s/redirect`, ctx.BaseURL, ctx.Integration.ID().String()),
