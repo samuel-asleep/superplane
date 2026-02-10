@@ -9,6 +9,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"os"
 	"slices"
 	"strconv"
 	"strings"
@@ -193,6 +194,17 @@ func (s *Slack) appManifest(ctx core.SyncContext) ([]byte, error) {
 	appURL := ctx.WebhooksBaseURL
 	if appURL == "" {
 		appURL = ctx.BaseURL
+	}
+
+	// If the runtime/public API is served under a base path (e.g. /v or /v/api/v1),
+	// ensure the URL used in the Slack manifest contains that path. This helps
+	// when the externally routed URL includes an extra prefix (such as github.dev /v).
+	if publicPath := os.Getenv("PUBLIC_API_BASE_PATH"); publicPath != "" {
+		// If appURL does not already include the public path or the expected /api/v1,
+		// append the public path to the base URL.
+		if !strings.Contains(appURL, publicPath) && !strings.Contains(appURL, "/api/v1") {
+			appURL = strings.TrimRight(appURL, "/") + "/" + strings.TrimLeft(publicPath, "/")
+		}
 	}
 
 	//
