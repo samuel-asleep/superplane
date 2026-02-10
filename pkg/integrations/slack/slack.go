@@ -361,17 +361,17 @@ func (s *Slack) handleChallenge(ctx core.HTTPRequestContext, payload EventPayloa
 }
 
 type InteractionPayload struct {
-	Type        string                 `json:"type"`
-	User        map[string]any         `json:"user"`
-	Container   map[string]any         `json:"container"`
-	Actions     []InteractionAction    `json:"actions"`
-	ResponseURL string                 `json:"response_url"`
-	Message     map[string]any         `json:"message"`
-	Channel     map[string]any         `json:"channel"`
-	State       map[string]any         `json:"state"`
-	Token       string                 `json:"token"`
-	APIAppID    string                 `json:"api_app_id"`
-	Team        map[string]any         `json:"team"`
+	Type        string              `json:"type"`
+	User        map[string]any      `json:"user"`
+	Container   map[string]any      `json:"container"`
+	Actions     []InteractionAction `json:"actions"`
+	ResponseURL string              `json:"response_url"`
+	Message     map[string]any      `json:"message"`
+	Channel     map[string]any      `json:"channel"`
+	State       map[string]any      `json:"state"`
+	Token       string              `json:"token"`
+	APIAppID    string              `json:"api_app_id"`
+	Team        map[string]any      `json:"team"`
 }
 
 type InteractionAction struct {
@@ -493,7 +493,8 @@ func (s *Slack) handleInteractivity(ctx core.HTTPRequestContext, body []byte) {
 }
 
 func (s *Slack) createButtonClickAction(executionID uuid.UUID, buttonValue string) error {
-	execution, err := models.FindCanvasNodeExecutionByID(executionID)
+	var execution models.CanvasNodeExecution
+	err := database.Conn().Where("id = ?", executionID).First(&execution).Error
 	if err != nil {
 		return fmt.Errorf("failed to find execution: %w", err)
 	}
