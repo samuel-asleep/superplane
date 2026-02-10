@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"strconv"
 	"strings"
 
 	"github.com/google/go-github/v74/github"
@@ -399,6 +398,7 @@ func (g *GitHub) afterAppInstallation(ctx core.HTTPRequestContext, metadata Meta
 			),
 			http.StatusSeeOther,
 		)
+		return
 	}
 
 	installationID := ctx.Request.URL.Query().Get("installation_id")
@@ -426,40 +426,6 @@ func (g *GitHub) afterAppInstallation(ctx core.HTTPRequestContext, metadata Meta
 		return
 	}
 
-	// Get installation details to determine account type
-	installationIDInt, err := strconv.ParseInt(installationID, 10, 64)
-	if err != nil {
-		ctx.Logger.Errorf("failed to parse installation ID: %v", err)
-		http.Error(ctx.Response, "internal server error", http.StatusInternalServerError)
-		return
-	}
-
-	installation, _, err := client.Apps.GetInstallation(context.Background(), installationIDInt)
-	if err != nil {
-		ctx.Logger.Errorf("failed to get installation: %v", err)
-		http.Error(ctx.Response, "internal server error", http.StatusInternalServerError)
-		return
-	}
-
-	// Set owner and owner type from installation
-	if installation.Account != nil {
-		metadata.Owner = installation.Account.GetLogin()
-		metadata.OwnerType = installation.Account.GetType()
-	}
-
-	// Fallback to getting app details if owner is still empty
-	if metadata.Owner == "" {
-		ghApp, _, err := client.Apps.Get(context.Background(), metadata.GitHubApp.Slug)
-		if err != nil {
-			ctx.Logger.Errorf("failed to get app: %v", err)
-			http.Error(ctx.Response, "internal server error", http.StatusInternalServerError)
-			return
-		}
-
-		metadata.Owner = ghApp.Owner.GetLogin()
-		metadata.OwnerType = ghApp.Owner.GetType()
-	}
-
 	response, _, err := client.Apps.ListRepos(context.Background(), &github.ListOptions{})
 	if err != nil {
 		ctx.Logger.Errorf("failed to list repos: %v", err)
@@ -477,6 +443,26 @@ func (g *GitHub) afterAppInstallation(ctx core.HTTPRequestContext, metadata Meta
 	}
 
 	metadata.Repositories = repos
+
+	// Get account type from the first repository's owner
+	// All repositories will have the same owner (the installation account)
+	if len(response.Repositories) > 0 && response.Repositories[0].Owner != nil {
+		metadata.Owner = response.Repositories[0].Owner.GetLogin()
+		metadata.OwnerType = response.Repositories[0].Owner.GetType()
+	}
+
+	// Fallback to getting app details if owner is still empty
+	if metadata.Owner == "" {
+		ghApp, _, err := client.Apps.Get(context.Background(), metadata.GitHubApp.Slug)
+		if err != nil {
+			ctx.Logger.Errorf("failed to get app: %v", err)
+			http.Error(ctx.Response, "internal server error", http.StatusInternalServerError)
+			return
+		}
+
+		metadata.Owner = ghApp.Owner.GetLogin()
+		metadata.OwnerType = ghApp.Owner.GetType()
+	}
 	metadata.State = ""
 
 	ctx.Integration.SetMetadata(metadata)
