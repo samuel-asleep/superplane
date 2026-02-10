@@ -314,63 +314,6 @@ func (c *SendAndWaitForResponse) buildMessageBlocks(message string, buttons []Bu
 	return blocks
 }
 
-func (c *SendAndWaitForResponse) OnIntegrationMessage(ctx core.IntegrationMessageContext) error {
-	// Parse the interaction message
-	message, ok := ctx.Message.(map[string]any)
-	if !ok {
-		return fmt.Errorf("invalid message format")
-	}
-
-	messageType, _ := message["type"].(string)
-	if messageType != "block_action" {
-		// Not a block action, ignore
-		return nil
-	}
-
-	// Get metadata
-	var metadata SendAndWaitForResponseMetadata
-	if err := mapstructure.Decode(ctx.NodeMetadata.Get(), &metadata); err != nil {
-		return fmt.Errorf("failed to decode metadata: %w", err)
-	}
-
-	// Check if this interaction is for this execution
-	messageTS, _ := message["message_ts"].(string)
-	if messageTS != metadata.MessageTS {
-		// Not for this execution
-		return nil
-	}
-
-	// Check if already responded
-	if metadata.State != "waiting" {
-		return nil
-	}
-
-	// Extract selected value
-	selectedValue, _ := message["selected_value"].(string)
-	responseTS, _ := message["response_ts"].(string)
-	user, _ := message["user"].(map[string]any)
-
-	metadata.SelectedValue = selectedValue
-	metadata.ResponseTS = responseTS
-	metadata.State = "responded"
-
-	if err := ctx.NodeMetadata.Set(metadata); err != nil {
-		return fmt.Errorf("failed to update metadata: %w", err)
-	}
-
-	// Emit on received channel
-	return ctx.Events.Emit(
-		"slack.response.received",
-		map[string]any{
-			"channel":    ChannelReceived,
-			"value":      selectedValue,
-			"messageTs":  metadata.MessageTS,
-			"responseTs": responseTS,
-			"user":       user,
-		},
-	)
-}
-
 func (c *SendAndWaitForResponse) HandleWebhook(ctx core.WebhookRequestContext) (int, error) {
 	return 200, nil
 }
@@ -379,17 +322,27 @@ func (c *SendAndWaitForResponse) Actions() []core.Action {
 	return []core.Action{
 		{
 			Name:        "timeout",
-			Label:       "Timeout",
 			Description: "Handle timeout when no response is received",
+		},
+		{
+			Name:        "buttonClicked",
+			Description: "Handle button click from Slack",
 		},
 	}
 }
 
 func (c *SendAndWaitForResponse) HandleAction(ctx core.ActionContext) error {
-	if ctx.Name != "timeout" {
+	switch ctx.Name {
+	case "timeout":
+		return c.handleTimeout(ctx)
+	case "buttonClicked":
+		return c.handleButtonClicked(ctx)
+	default:
 		return fmt.Errorf("unknown action: %s", ctx.Name)
 	}
+}
 
+func (c *SendAndWaitForResponse) handleTimeout(ctx core.ActionContext) error {
 	// Check if already responded
 	var metadata SendAndWaitForResponseMetadata
 	if err := mapstructure.Decode(ctx.Metadata.Get(), &metadata); err != nil {
@@ -411,6 +364,43 @@ func (c *SendAndWaitForResponse) HandleAction(ctx core.ActionContext) error {
 		"slack.response.timeout",
 		[]any{map[string]any{
 			"messageTs": metadata.MessageTS,
+		}},
+	)
+}
+
+func (c *SendAndWaitForResponse) handleButtonClicked(ctx core.ActionContext) error {
+	// Check if already responded
+	var metadata SendAndWaitForResponseMetadata
+	if err := mapstructure.Decode(ctx.Metadata.Get(), &metadata); err != nil {
+		return fmt.Errorf("failed to decode metadata: %w", err)
+	}
+
+	if metadata.State != "waiting" {
+		// Already responded, ignore
+		return nil
+	}
+
+	// Extract button click data from parameters
+	selectedValue, _ := ctx.Parameters["value"].(string)
+	responseTS, _ := ctx.Parameters["responseTs"].(string)
+	user, _ := ctx.Parameters["user"].(map[string]any)
+
+	metadata.SelectedValue = selectedValue
+	metadata.ResponseTS = responseTS
+	metadata.State = "responded"
+
+	if err := ctx.Metadata.Set(metadata); err != nil {
+		return err
+	}
+
+	return ctx.ExecutionState.Emit(
+		ChannelReceived,
+		"slack.response.received",
+		[]any{map[string]any{
+			"value":      selectedValue,
+			"messageTs":  metadata.MessageTS,
+			"responseTs": responseTS,
+			"user":       user,
 		}},
 	)
 }
