@@ -296,6 +296,7 @@ func (c *GetBillingUsage) getDetailedUsage(goCtx context.Context, client *github
 	// Build options for the usage report API
 	opts := &github.UsageReportOptions{}
 
+	// Note: Year, Month, and Day are already validated in Setup(), so errors can be safely ignored here
 	if config.Year != "" {
 		year, _ := strconv.Atoi(config.Year)
 		opts.Year = &year
