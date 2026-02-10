@@ -248,17 +248,8 @@ func (c *GetBillingUsage) Execute(ctx core.ExecutionContext) error {
 	var output BillingUsageOutput
 	output.MinutesUsedBreakdown = make(map[string]int64)
 
-	// Determine if account is an organization or user
-	isOrganization := appMetadata.OwnerType == "Organization"
-
-	// Always use detailed usage report API as the simple billing endpoints are deprecated/unreliable
-	// The usage report API works for both filtered and unfiltered queries
-	var usage BillingUsageOutput
-	if isOrganization {
-		usage, err = c.getDetailedUsage(context.Background(), client, appMetadata.Owner, config)
-	} else {
-		usage, err = c.getDetailedUsageUser(context.Background(), client, appMetadata.Owner, config)
-	}
+	// Get usage data for organization
+	usage, err := c.getDetailedUsage(context.Background(), client, appMetadata.Owner, config)
 	if err != nil {
 		return fmt.Errorf("failed to get usage data: %w", err)
 	}
@@ -291,109 +282,6 @@ func (c *GetBillingUsage) getDetailedUsage(goCtx context.Context, client *github
 
 	// Get usage report
 	report, _, err := client.Billing.GetUsageReportOrg(goCtx, owner, opts)
-	if err != nil {
-		return BillingUsageOutput{}, fmt.Errorf("failed to get usage report: %w", err)
-	}
-
-	output := BillingUsageOutput{
-		MinutesUsedBreakdown: make(map[string]int64),
-	}
-
-	// Track repositories if needed
-	repoUsageMap := make(map[string]*RepositoryUsage)
-
-	// Process usage items
-	for _, item := range report.UsageItems {
-		// Filter by product if not actions
-		if config.Product != "" && config.Product != "actions" && item.GetProduct() != config.Product {
-			continue
-		}
-
-		// Only process Actions-related items
-		if item.GetProduct() != "actions" {
-			continue
-		}
-
-		// Filter by SKU if specified
-		if config.SKU != "" && item.GetSKU() != config.SKU {
-			continue
-		}
-
-		// Filter by repository if specified
-		repoName := item.GetRepositoryName()
-		if len(config.Repositories) > 0 {
-			found := false
-			for _, repo := range config.Repositories {
-				if repoName == repo {
-					found = true
-					break
-				}
-			}
-			if !found {
-				continue
-			}
-		}
-
-		quantity := item.GetQuantity()
-		if quantity == nil {
-			continue
-		}
-		quantityInt := int64(*quantity)
-		sku := item.GetSKU()
-
-		// Add to totals
-		output.MinutesUsed += quantityInt
-		output.MinutesUsedBreakdown[sku] += quantityInt
-
-		// Add cost if available
-		if item.NetAmount != nil {
-			output.TotalCost += *item.NetAmount
-		}
-
-		// Track per-repository breakdown if we have multiple repos or filtering by repos
-		if len(config.Repositories) > 0 && repoName != "" {
-			if repoUsageMap[repoName] == nil {
-				repoUsageMap[repoName] = &RepositoryUsage{
-					RepositoryName: repoName,
-					Breakdown:      make(map[string]int64),
-				}
-			}
-			repoUsageMap[repoName].MinutesUsed += quantityInt
-			repoUsageMap[repoName].Breakdown[sku] += quantityInt
-		}
-	}
-
-	// Convert repo map to slice
-	if len(repoUsageMap) > 0 {
-		output.RepositoryBreakdown = []RepositoryUsage{}
-		for _, repoUsage := range repoUsageMap {
-			output.RepositoryBreakdown = append(output.RepositoryBreakdown, *repoUsage)
-		}
-	}
-
-	return output, nil
-}
-
-func (c *GetBillingUsage) getDetailedUsageUser(goCtx context.Context, client *github.Client, user string, config GetBillingUsageConfiguration) (BillingUsageOutput, error) {
-	// Build options for the usage report API
-	opts := &github.UsageReportOptions{}
-
-	// Note: Year, Month, and Day are already validated in Setup(), so errors can be safely ignored here
-	if config.Year != "" {
-		year, _ := strconv.Atoi(config.Year)
-		opts.Year = &year
-	}
-	if config.Month != "" {
-		month, _ := strconv.Atoi(config.Month)
-		opts.Month = &month
-	}
-	if config.Day != "" {
-		day, _ := strconv.Atoi(config.Day)
-		opts.Day = &day
-	}
-
-	// Get usage report for user
-	report, _, err := client.Billing.GetUsageReportUser(goCtx, user, opts)
 	if err != nil {
 		return BillingUsageOutput{}, fmt.Errorf("failed to get usage report: %w", err)
 	}
