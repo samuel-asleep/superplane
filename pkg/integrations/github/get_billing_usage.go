@@ -2,10 +2,7 @@ package github
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
-	"io"
-	"net/http"
 	"strconv"
 	"time"
 
@@ -249,47 +246,23 @@ func (c *GetBillingUsage) Execute(ctx core.ExecutionContext) error {
 	var output BillingUsageOutput
 	output.MinutesUsedBreakdown = make(map[string]int64)
 
-	// If no repositories specified, get org-wide usage
-	if len(config.Repositories) == 0 {
-		usage, err := c.getOrgUsage(context.Background(), client, appMetadata.Owner, config)
+	// Determine if we should use simple billing or detailed usage report
+	useDetailedReport := len(config.Repositories) > 0 || config.Day != "" || config.SKU != ""
+
+	if useDetailedReport {
+		// Use detailed usage report API for filtering by repo/day/SKU
+		usage, err := c.getDetailedUsage(context.Background(), client, appMetadata.Owner, config)
 		if err != nil {
-			return fmt.Errorf("failed to get organization usage: %w", err)
-		}
-		output = usage
-	} else if len(config.Repositories) == 1 {
-		// Single repository - get specific repository usage
-		usage, err := c.getRepositoryUsage(context.Background(), client, appMetadata.Owner, config.Repositories[0], config)
-		if err != nil {
-			return fmt.Errorf("failed to get repository usage: %w", err)
+			return fmt.Errorf("failed to get detailed usage: %w", err)
 		}
 		output = usage
 	} else {
-		// Multiple repositories - aggregate usage
-		for _, repo := range config.Repositories {
-			repoUsage, err := c.getRepositoryUsage(context.Background(), client, appMetadata.Owner, repo, config)
-			if err != nil {
-				ctx.Logger.Warnf("Failed to get usage for repository %s: %v", repo, err)
-				continue
-			}
-
-			output.MinutesUsed += repoUsage.MinutesUsed
-			output.TotalCost += repoUsage.TotalCost
-
-			// Aggregate breakdown by OS
-			for os, minutes := range repoUsage.MinutesUsedBreakdown {
-				output.MinutesUsedBreakdown[os] += minutes
-			}
-
-			// Add to repository breakdown
-			if output.RepositoryBreakdown == nil {
-				output.RepositoryBreakdown = []RepositoryUsage{}
-			}
-			output.RepositoryBreakdown = append(output.RepositoryBreakdown, RepositoryUsage{
-				RepositoryName: repo,
-				MinutesUsed:    repoUsage.MinutesUsed,
-				Breakdown:      repoUsage.MinutesUsedBreakdown,
-			})
+		// Use simple billing API for org-wide summary
+		usage, err := c.getSimpleBilling(context.Background(), client, appMetadata.Owner)
+		if err != nil {
+			return fmt.Errorf("failed to get billing summary: %w", err)
 		}
+		output = usage
 	}
 
 	return ctx.ExecutionState.Emit(
@@ -299,168 +272,126 @@ func (c *GetBillingUsage) Execute(ctx core.ExecutionContext) error {
 	)
 }
 
-func (c *GetBillingUsage) getOrgUsage(goCtx context.Context, client *github.Client, owner string, config GetBillingUsageConfiguration) (BillingUsageOutput, error) {
-	// Build API URL
-	url := fmt.Sprintf("https://api.github.com/orgs/%s/usage", owner)
-	params := []string{}
-
-	if config.Year != "" {
-		params = append(params, fmt.Sprintf("year=%s", config.Year))
-	}
-	if config.Month != "" {
-		params = append(params, fmt.Sprintf("month=%s", config.Month))
-	}
-	if config.Day != "" {
-		params = append(params, fmt.Sprintf("day=%s", config.Day))
-	}
-	if config.Product != "" {
-		params = append(params, fmt.Sprintf("product=%s", config.Product))
-	}
-	if config.SKU != "" {
-		params = append(params, fmt.Sprintf("sku=%s", config.SKU))
-	}
-
-	if len(params) > 0 {
-		url += "?" + params[0]
-		for i := 1; i < len(params); i++ {
-			url += "&" + params[i]
-		}
-	}
-
-	// Create request
-	req, err := http.NewRequestWithContext(goCtx, "GET", url, nil)
+func (c *GetBillingUsage) getSimpleBilling(goCtx context.Context, client *github.Client, owner string) (BillingUsageOutput, error) {
+	// Use the simple billing API for Actions
+	billing, _, err := client.Billing.GetActionsBillingOrg(goCtx, owner)
 	if err != nil {
-		return BillingUsageOutput{}, fmt.Errorf("failed to create request: %w", err)
+		return BillingUsageOutput{}, fmt.Errorf("failed to get Actions billing: %w", err)
 	}
 
-	// Execute request through GitHub client's HTTP client
-	httpClient := client.Client()
-	resp, err := httpClient.Do(req)
-	if err != nil {
-		return BillingUsageOutput{}, fmt.Errorf("failed to execute request: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return BillingUsageOutput{}, fmt.Errorf("API request failed with status %d: %s", resp.StatusCode, string(body))
+	output := BillingUsageOutput{
+		MinutesUsed:          int64(billing.TotalMinutesUsed),
+		MinutesUsedBreakdown: make(map[string]int64),
 	}
 
-	// Parse response
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return BillingUsageOutput{}, fmt.Errorf("failed to read response body: %w", err)
+	// Convert breakdown from map[string]int to map[string]int64
+	for os, minutes := range billing.MinutesUsedBreakdown {
+		output.MinutesUsedBreakdown[os] = int64(minutes)
 	}
 
-	var apiResponse map[string]any
-	if err := json.Unmarshal(body, &apiResponse); err != nil {
-		return BillingUsageOutput{}, fmt.Errorf("failed to parse response: %w", err)
-	}
-
-	return c.parseAPIResponse(apiResponse), nil
+	return output, nil
 }
 
-func (c *GetBillingUsage) getRepositoryUsage(goCtx context.Context, client *github.Client, owner, repo string, config GetBillingUsageConfiguration) (BillingUsageOutput, error) {
-	// Build API URL for repository-specific usage
-	url := fmt.Sprintf("https://api.github.com/orgs/%s/usage", owner)
-	params := []string{fmt.Sprintf("repository=%s", repo)}
+func (c *GetBillingUsage) getDetailedUsage(goCtx context.Context, client *github.Client, owner string, config GetBillingUsageConfiguration) (BillingUsageOutput, error) {
+	// Build options for the usage report API
+	opts := &github.UsageReportOptions{}
 
 	if config.Year != "" {
-		params = append(params, fmt.Sprintf("year=%s", config.Year))
+		year, _ := strconv.Atoi(config.Year)
+		opts.Year = &year
 	}
 	if config.Month != "" {
-		params = append(params, fmt.Sprintf("month=%s", config.Month))
+		month, _ := strconv.Atoi(config.Month)
+		opts.Month = &month
 	}
 	if config.Day != "" {
-		params = append(params, fmt.Sprintf("day=%s", config.Day))
-	}
-	if config.Product != "" {
-		params = append(params, fmt.Sprintf("product=%s", config.Product))
-	}
-	if config.SKU != "" {
-		params = append(params, fmt.Sprintf("sku=%s", config.SKU))
+		day, _ := strconv.Atoi(config.Day)
+		opts.Day = &day
 	}
 
-	url += "?" + params[0]
-	for i := 1; i < len(params); i++ {
-		url += "&" + params[i]
-	}
-
-	// Create request
-	req, err := http.NewRequestWithContext(goCtx, "GET", url, nil)
+	// Get usage report
+	report, _, err := client.Billing.GetUsageReportOrg(goCtx, owner, opts)
 	if err != nil {
-		return BillingUsageOutput{}, fmt.Errorf("failed to create request: %w", err)
+		return BillingUsageOutput{}, fmt.Errorf("failed to get usage report: %w", err)
 	}
 
-	// Execute request through GitHub client's HTTP client
-	httpClient := client.Client()
-	resp, err := httpClient.Do(req)
-	if err != nil {
-		return BillingUsageOutput{}, fmt.Errorf("failed to execute request: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return BillingUsageOutput{}, fmt.Errorf("API request failed with status %d: %s", resp.StatusCode, string(body))
-	}
-
-	// Parse response
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return BillingUsageOutput{}, fmt.Errorf("failed to read response body: %w", err)
-	}
-
-	var apiResponse map[string]any
-	if err := json.Unmarshal(body, &apiResponse); err != nil {
-		return BillingUsageOutput{}, fmt.Errorf("failed to parse response: %w", err)
-	}
-
-	return c.parseAPIResponse(apiResponse), nil
-}
-
-func (c *GetBillingUsage) parseAPIResponse(apiResponse map[string]any) BillingUsageOutput {
 	output := BillingUsageOutput{
 		MinutesUsedBreakdown: make(map[string]int64),
 	}
 
-	// Parse usage items from response
-	if usageItems, ok := apiResponse["usageItems"].([]any); ok {
-		for _, item := range usageItems {
-			if itemMap, ok := item.(map[string]any); ok {
-				// Get minutes from quantity
-				if quantity, ok := itemMap["quantity"].(float64); ok {
-					output.MinutesUsed += int64(quantity)
+	// Track repositories if needed
+	repoUsageMap := make(map[string]*RepositoryUsage)
 
-					// Get OS from SKU
-					if sku, ok := itemMap["sku"].(string); ok {
-						output.MinutesUsedBreakdown[sku] += int64(quantity)
-					}
-				}
+	// Process usage items
+	for _, item := range report.UsageItems {
+		// Filter by product if not actions
+		if config.Product != "" && config.Product != "actions" && item.GetProduct() != config.Product {
+			continue
+		}
 
-				// Get cost if available
-				if netAmount, ok := itemMap["netAmount"].(float64); ok {
-					output.TotalCost += netAmount
+		// Only process Actions-related items
+		if item.GetProduct() != "actions" {
+			continue
+		}
+
+		// Filter by SKU if specified
+		if config.SKU != "" && item.GetSKU() != config.SKU {
+			continue
+		}
+
+		// Filter by repository if specified
+		repoName := item.GetRepositoryName()
+		if len(config.Repositories) > 0 {
+			found := false
+			for _, repo := range config.Repositories {
+				if repoName == repo {
+					found = true
+					break
 				}
 			}
+			if !found {
+				continue
+			}
+		}
+
+		quantity := item.GetQuantity()
+		if quantity == nil {
+			continue
+		}
+		quantityInt := int64(*quantity)
+		sku := item.GetSKU()
+
+		// Add to totals
+		output.MinutesUsed += quantityInt
+		output.MinutesUsedBreakdown[sku] += quantityInt
+
+		// Add cost if available
+		if item.NetAmount != nil {
+			output.TotalCost += *item.NetAmount
+		}
+
+		// Track per-repository breakdown if we have multiple repos or filtering by repos
+		if len(config.Repositories) > 0 && repoName != "" {
+			if repoUsageMap[repoName] == nil {
+				repoUsageMap[repoName] = &RepositoryUsage{
+					RepositoryName: repoName,
+					Breakdown:      make(map[string]int64),
+				}
+			}
+			repoUsageMap[repoName].MinutesUsed += quantityInt
+			repoUsageMap[repoName].Breakdown[sku] += quantityInt
 		}
 	}
 
-	// Alternative format: direct fields
-	if minutesUsed, ok := apiResponse["total_minutes_used"].(float64); ok {
-		output.MinutesUsed = int64(minutesUsed)
-	}
-
-	// Parse breakdown by OS if present
-	if breakdown, ok := apiResponse["minutes_used_breakdown"].(map[string]any); ok {
-		for os, minutes := range breakdown {
-			if minutesFloat, ok := minutes.(float64); ok {
-				output.MinutesUsedBreakdown[os] = int64(minutesFloat)
-			}
+	// Convert repo map to slice
+	if len(repoUsageMap) > 0 {
+		output.RepositoryBreakdown = []RepositoryUsage{}
+		for _, repoUsage := range repoUsageMap {
+			output.RepositoryBreakdown = append(output.RepositoryBreakdown, *repoUsage)
 		}
 	}
 
-	return output
+	return output, nil
 }
 
 func (c *GetBillingUsage) ProcessQueueItem(ctx core.ProcessQueueContext) (*uuid.UUID, error) {
