@@ -1,0 +1,66 @@
+name: Add DCO sign-off to latest commit (selected branch)
+
+on:
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: "Branch whose latest commit should be amended"
+        required: true
+        type: string
+      git_user_name:
+        description: "Git user.name for the amended commit"
+        required: false
+        default: "samuel-asleep"
+        type: string
+      git_user_email:
+        description: "Git user.email for the amended commit"
+        required: false
+        default: "benneu40@gmail.com"
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: dco-amend-${{ github.repository }}-${{ inputs.branch }}
+  cancel-in-progress: false
+
+jobs:
+  amend-latest:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout branch (full history)
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.branch }}
+          fetch-depth: 0
+
+      - name: Configure git identity
+        run: |
+          git config user.name "${{ inputs.git_user_name }}"
+          git config user.email "${{ inputs.git_user_email }}"
+
+      - name: Add DCO sign-off to latest commit (amend)
+        run: |
+          set -euo pipefail
+
+          # Ensure working tree is clean
+          if ! git diff --quiet || ! git diff --cached --quiet; then
+            echo "Working tree is not clean. Refusing to amend."
+            exit 1
+          fi
+
+          # If the latest commit already has a Signed-off-by matching the configured identity, do nothing
+          if git log -1 --format=%B | grep -Fxq "Signed-off-by: ${{ inputs.git_user_name }} <${{ inputs.git_user_email }}>"; then
+            echo "Latest commit already contains the correct Signed-off-by line. Nothing to do."
+            exit 0
+          fi
+
+          # Amend without changing the message, but add the sign-off line
+          git commit --amend --no-edit -s
+
+      - name: Push amended commit (force-with-lease)
+        run: |
+          set -euo pipefail
+          # Safer than --force: refuses if remote moved unexpectedly
+          git push --force-with-lease origin "HEAD:${{ inputs.branch }}" 
