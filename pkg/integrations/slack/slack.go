@@ -106,6 +106,7 @@ func (s *Slack) HandleAction(ctx core.IntegrationActionContext) error {
 func (s *Slack) Components() []core.Component {
 	return []core.Component{
 		&SendTextMessage{},
+		&WaitForButtonClick{},
 	}
 }
 
@@ -357,7 +358,63 @@ func (s *Slack) handleChallenge(ctx core.HTTPRequestContext, payload EventPayloa
 }
 
 func (s *Slack) handleInteractivity(ctx core.HTTPRequestContext, body []byte) {
-	// TODO
+	// Parse form-encoded payload
+	if err := ctx.Request.ParseForm(); err != nil {
+		ctx.Logger.Errorf("failed to parse form: %v", err)
+		ctx.Response.WriteHeader(400)
+		return
+	}
+
+	payloadStr := ctx.Request.FormValue("payload")
+	if payloadStr == "" {
+		ctx.Logger.Errorf("no payload found in request")
+		ctx.Response.WriteHeader(400)
+		return
+	}
+
+	var payload map[string]interface{}
+	if err := json.Unmarshal([]byte(payloadStr), &payload); err != nil {
+		ctx.Logger.Errorf("failed to parse payload JSON: %v", err)
+		ctx.Response.WriteHeader(400)
+		return
+	}
+
+	// Extract message timestamp to find the execution
+	message, ok := payload["message"].(map[string]interface{})
+	if !ok {
+		ctx.Logger.Errorf("message not found in payload")
+		ctx.Response.WriteHeader(400)
+		return
+	}
+
+	messageTS, ok := message["ts"].(string)
+	if !ok {
+		ctx.Logger.Errorf("message timestamp not found")
+		ctx.Response.WriteHeader(400)
+		return
+	}
+
+	// Find the execution by message timestamp
+	// We need to dispatch this to the appropriate component's webhook handler
+	// For now, we'll try to find the WaitForButtonClick component
+	components := s.Components()
+	for _, component := range components {
+		if component.Name() == "slack.waitForButtonClick" {
+			// Create a webhook context for this component
+			// The component's HandleWebhook will process the interaction
+			status, err := component.HandleWebhook(ctx)
+			if err != nil {
+				ctx.Logger.Errorf("error handling webhook: %v", err)
+				ctx.Response.WriteHeader(status)
+				return
+			}
+			ctx.Response.WriteHeader(status)
+			return
+		}
+	}
+
+	ctx.Logger.Warnf("no component found to handle interactivity for message %s", messageTS)
+	ctx.Response.WriteHeader(200)
 }
 
 func (s *Slack) parseEventCallback(eventPayload EventPayload) (string, any, error) {
