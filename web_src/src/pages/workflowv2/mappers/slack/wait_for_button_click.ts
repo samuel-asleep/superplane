@@ -11,7 +11,7 @@ import {
 } from "../types";
 import { ComponentBaseProps, ComponentBaseSpec, EventSection, EventState, EventStateMap } from "@/ui/componentBase";
 import { getBackgroundColorClass, getColorClass } from "@/utils/colors";
-import { getState, getStateMap, getTriggerRenderer } from "..";
+import { getTriggerRenderer } from "..";
 import { MetadataItem } from "@/ui/metadataList";
 import slackIcon from "@/assets/icons/integrations/slack.svg";
 import { formatTimeAgo } from "@/utils/date";
@@ -91,7 +91,6 @@ export const WAIT_FOR_BUTTON_CLICK_STATE_REGISTRY: EventStateRegistry = {
 export const waitForButtonClickMapper: ComponentBaseMapper = {
   props(context: ComponentBaseContext): ComponentBaseProps {
     const lastExecution = context.lastExecutions.length > 0 ? context.lastExecutions[0] : null;
-    const componentName = context.componentDefinition.name || "unknown";
 
     return {
       title:
@@ -104,9 +103,7 @@ export const waitForButtonClickMapper: ComponentBaseMapper = {
       iconColor: getColorClass(context.componentDefinition.color),
       collapsedBackground: getBackgroundColorClass(context.componentDefinition.color),
       collapsed: context.node.isCollapsed,
-      eventSections: lastExecution
-        ? waitForButtonClickEventSections(context.nodes, lastExecution, componentName)
-        : undefined,
+      eventSections: lastExecution ? waitForButtonClickEventSections(context.nodes, lastExecution) : undefined,
       includeEmptyState: !lastExecution,
       metadata: waitForButtonClickMetadataList(context.node),
       specs: waitForButtonClickSpecs(context.node),
@@ -117,10 +114,10 @@ export const waitForButtonClickMapper: ComponentBaseMapper = {
   getExecutionDetails(context: ExecutionDetailsContext): Record<string, string> {
     const outputs = context.execution.outputs as { received?: OutputPayload[]; timeout?: OutputPayload[] } | undefined;
     const metadata = context.execution.metadata as WaitForButtonClickMetadata | undefined;
-    
+
     // Get data from the received output channel
     const receivedData = outputs?.received?.[0]?.data as Record<string, unknown> | undefined;
-    
+
     const details: Record<string, string> = {};
 
     // Add "Sent at" timestamp from execution creation
@@ -184,11 +181,7 @@ function waitForButtonClickSpecs(node: NodeInfo): ComponentBaseSpec[] {
   return specs;
 }
 
-function waitForButtonClickEventSections(
-  nodes: NodeInfo[],
-  execution: ExecutionInfo,
-  componentName: string,
-): EventSection[] {
+function waitForButtonClickEventSections(nodes: NodeInfo[], execution: ExecutionInfo): EventSection[] {
   const rootTriggerNode = nodes.find((n) => n.id === execution.rootEvent?.nodeId);
   const rootTriggerRenderer = getTriggerRenderer(rootTriggerNode?.componentName!);
   const { title } = rootTriggerRenderer.getTitleAndSubtitle({ event: execution.rootEvent });
