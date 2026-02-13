@@ -208,11 +208,8 @@ func (s *Slack) appManifest(ctx core.SyncContext) ([]byte, error) {
 		// No public path set, use default /api/v1
 		fullAPIPath = apiBasePath
 	} else if strings.HasSuffix(publicPath, apiBasePath) {
-		// Public path already ends with /api/v1, use it as-is
+		// Public path already ends with /api/v1 (including the case where it equals /api/v1), use it as-is
 		fullAPIPath = publicPath
-	} else if publicPath == apiBasePath {
-		// Public path is exactly /api/v1, use it
-		fullAPIPath = apiBasePath
 	} else {
 		// Public path is something else (e.g. /v), append /api/v1
 		fullAPIPath = strings.TrimRight(publicPath, "/") + apiBasePath

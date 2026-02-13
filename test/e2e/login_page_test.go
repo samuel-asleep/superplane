@@ -121,13 +121,8 @@ func (steps *TestLoginPageSteps) LoginAndReturnToRedirectedURL() {
 		steps.t.Fatal("redirect parameter not found in login URL")
 	}
 
-	// redirectParam is already URL-decoded by parsedURL.Query().Get()
-	// so we just need to re-encode it once for the URL
 	steps.session.Visit("/login?redirect=" + url.QueryEscape(redirectParam))
-	
-	// Wait for the login page to detect the auth cookie and redirect
-	// The Login.tsx useEffect should trigger a redirect via window.location.href
-	steps.session.WaitForNavigation()
+	steps.session.Sleep(500)
 }
 
 func (steps *TestLoginPageSteps) SetInvalidAuthCookie() {

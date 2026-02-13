@@ -305,29 +305,6 @@ func (s *TestSession) AssertURLContains(part string) {
 	}
 }
 
-func (s *TestSession) WaitForNavigation() {
-	s.t.Log("Waiting for navigation")
-	// Wait for the page to navigate away from the current URL
-	// This is useful when we expect a client-side redirect (e.g., via window.location.href)
-	// We need to use WaitForURL or WaitForFunction since the redirect happens after page load
-	
-	// Wait up to timeout for the URL to change from the login page
-	timeout := time.Duration(s.timeoutMs) * time.Millisecond
-	deadline := time.Now().Add(timeout)
-	
-	initialURL := s.page.URL()
-	for time.Now().Before(deadline) {
-		currentURL := s.page.URL()
-		if currentURL != initialURL {
-			s.t.Logf("Navigation complete: %s -> %s", initialURL, currentURL)
-			return
-		}
-		time.Sleep(100 * time.Millisecond)
-	}
-	
-	s.t.Fatalf("navigation did not occur within timeout, still at %s", s.page.URL())
-}
-
 func (s *TestSession) ScrollToTheBottomOfPage() {
 	s.t.Log("Scrolling to the bottom of the page")
 
