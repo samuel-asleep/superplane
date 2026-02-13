@@ -366,9 +366,10 @@ func (e *CanvasNodeExecution) StartInTransaction(tx *gorm.DB) error {
 	//
 	// Update the execution state to started.
 	//
+	now := time.Now()
 	err := tx.Model(e).
 		Update("state", CanvasNodeExecutionStateStarted).
-		Update("updated_at", time.Now()).
+		Update("updated_at", now).
 		Error
 
 	if err != nil {
@@ -377,7 +378,6 @@ func (e *CanvasNodeExecution) StartInTransaction(tx *gorm.DB) error {
 
 	// Update the struct fields to match the database state
 	// This ensures that any subsequent Save() calls won't overwrite these changes
-	now := time.Now()
 	e.State = CanvasNodeExecutionStateStarted
 	e.UpdatedAt = &now
 
