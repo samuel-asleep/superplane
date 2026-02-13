@@ -196,6 +196,15 @@ func (c *WaitForButtonClick) Setup(ctx core.SetupContext) error {
 		}
 	}
 
+	// Check for duplicate button values
+	buttonValues := make(map[string]bool)
+	for i, button := range config.Buttons {
+		if buttonValues[button.Value] {
+			return fmt.Errorf("button %d: duplicate value '%s' - each button must have a unique value", i, button.Value)
+		}
+		buttonValues[button.Value] = true
+	}
+
 	client, err := NewClient(ctx.Integration)
 	if err != nil {
 		return fmt.Errorf("failed to create Slack client: %w", err)
@@ -251,6 +260,15 @@ func (c *WaitForButtonClick) Execute(ctx core.ExecutionContext) error {
 		}
 	}
 
+	// Check for duplicate button values
+	buttonValues := make(map[string]bool)
+	for i, button := range config.Buttons {
+		if buttonValues[button.Value] {
+			return fmt.Errorf("button %d: duplicate value '%s' - each button must have a unique value", i, button.Value)
+		}
+		buttonValues[button.Value] = true
+	}
+
 	client, err := NewClient(ctx.Integration)
 	if err != nil {
 		return fmt.Errorf("failed to create Slack client: %w", err)
@@ -295,10 +313,23 @@ func (c *WaitForButtonClick) Execute(ctx core.ExecutionContext) error {
 		return fmt.Errorf("failed to send message: %w", err)
 	}
 
-	// Create subscription for button clicks with execution ID and message TS
+	// Load metadata to get channel ID
+	var metadata WaitForButtonClickMetadata
+	if err := mapstructure.Decode(ctx.Metadata.Get(), &metadata); err != nil {
+		return fmt.Errorf("failed to decode metadata: %w", err)
+	}
+
+	// Get channel ID from metadata
+	var channelID string
+	if metadata.Channel != nil {
+		channelID = metadata.Channel.ID
+	}
+
+	// Create subscription for button clicks with execution ID, message TS, and channel ID
 	subscriptionID, err := ctx.Integration.Subscribe(map[string]any{
 		"type":         "button_click",
 		"message_ts":   response.TS,
+		"channel_id":   channelID,
 		"execution_id": ctx.ID.String(),
 	})
 	if err != nil {
@@ -306,11 +337,6 @@ func (c *WaitForButtonClick) Execute(ctx core.ExecutionContext) error {
 	}
 
 	// Store the message timestamp and subscription in metadata
-	var metadata WaitForButtonClickMetadata
-	if err := mapstructure.Decode(ctx.Metadata.Get(), &metadata); err != nil {
-		return fmt.Errorf("failed to decode metadata: %w", err)
-	}
-
 	messageTS := response.TS
 	subIDStr := subscriptionID.String()
 	metadata.MessageTS = &messageTS
