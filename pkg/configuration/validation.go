@@ -325,7 +325,6 @@ func validateList(field Field, value any) error {
 
 	listOptions := field.TypeOptions.List
 
-	// Validate MaxItems if specified
 	if listOptions.MaxItems != nil {
 		if *listOptions.MaxItems <= 0 {
 			return fmt.Errorf("invalid max_items configuration: must be greater than 0")

@@ -384,7 +384,6 @@ type InteractionAction struct {
 }
 
 func (s *Slack) handleInteractivity(ctx core.HTTPRequestContext, body []byte) {
-	// Parse the payload parameter from form data
 	formValues, err := url.ParseQuery(string(body))
 	if err != nil {
 		ctx.Logger.Errorf("error parsing form data: %v", err)
@@ -406,7 +405,6 @@ func (s *Slack) handleInteractivity(ctx core.HTTPRequestContext, body []byte) {
 		return
 	}
 
-	// Only handle block_actions type for button clicks
 	if payload.Type != "block_actions" {
 		ctx.Logger.Infof("ignoring interaction type: %s", payload.Type)
 		ctx.Response.WriteHeader(http.StatusOK)
@@ -419,7 +417,6 @@ func (s *Slack) handleInteractivity(ctx core.HTTPRequestContext, body []byte) {
 		return
 	}
 
-	// Get the first action (button click)
 	action := payload.Actions[0]
 	if action.Type != "button" {
 		ctx.Logger.Infof("ignoring action type: %s", action.Type)
@@ -427,7 +424,6 @@ func (s *Slack) handleInteractivity(ctx core.HTTPRequestContext, body []byte) {
 		return
 	}
 
-	// Get message timestamp from container
 	messageTS, ok := payload.Container["message_ts"].(string)
 	if !ok {
 		ctx.Logger.Errorf("message_ts not found in container")
@@ -435,7 +431,6 @@ func (s *Slack) handleInteractivity(ctx core.HTTPRequestContext, body []byte) {
 		return
 	}
 
-	// Get channel ID from payload
 	channelID, ok := payload.Channel["id"].(string)
 	if !ok {
 		ctx.Logger.Errorf("channel id not found in payload")
@@ -455,7 +450,6 @@ func (s *Slack) handleInteractivity(ctx core.HTTPRequestContext, body []byte) {
 		return
 	}
 
-	// Get the configuration
 	config := subscription.Configuration.Data()
 	configMap, ok := config.(map[string]any)
 	if !ok {
@@ -464,7 +458,6 @@ func (s *Slack) handleInteractivity(ctx core.HTTPRequestContext, body []byte) {
 		return
 	}
 
-	// Get the execution ID from the subscription configuration
 	executionIDStr, ok := configMap["execution_id"].(string)
 	if !ok {
 		ctx.Logger.Errorf("execution_id not found in subscription configuration")
@@ -479,7 +472,6 @@ func (s *Slack) handleInteractivity(ctx core.HTTPRequestContext, body []byte) {
 		return
 	}
 
-	// Create an action request for this execution
 	err = s.createButtonClickAction(executionID, action.Value)
 	if err != nil {
 		ctx.Logger.Errorf("error creating button click action: %v", err)
