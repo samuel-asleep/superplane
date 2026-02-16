@@ -243,11 +243,6 @@ type IntegrationContext interface {
 	Subscribe(any) (*uuid.UUID, error)
 
 	/*
-	 * Unsubscribe from integration events.
-	 */
-	Unsubscribe(subscriptionID uuid.UUID) error
-
-	/*
 	 * Schedule actions for the integration.
 	 */
 	ScheduleResync(interval time.Duration) error

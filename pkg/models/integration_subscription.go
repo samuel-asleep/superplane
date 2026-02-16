@@ -80,21 +80,19 @@ func ListIntegrationSubscriptions(tx *gorm.DB, installationID uuid.UUID) ([]Node
 	return subscriptions, nil
 }
 
-// FindIntegrationSubscriptionByMessageTS finds a subscription by installation_id, message_ts, and channel_id
-// without loading node information. This is useful for webhook handlers that only need
-// the subscription configuration.
-// Note: This function specifically filters for subscriptions with type='button_click'.
-func FindIntegrationSubscriptionByMessageTS(tx *gorm.DB, installationID uuid.UUID, messageTS, channelID string) (*IntegrationSubscription, error) {
+// FindIntegrationSubscriptionByConfigFields finds a subscription by installation_id and arbitrary configuration fields.
+// This is a generic function that can be used by any integration to query subscriptions.
+// The filters parameter is a map of JSON field paths to their expected values.
+// Example: filters["configuration->>'message_ts'"] = messageTS
+func FindIntegrationSubscriptionByConfigFields(tx *gorm.DB, installationID uuid.UUID, filters map[string]string) (*IntegrationSubscription, error) {
 	var subscription IntegrationSubscription
 
-	err := tx.
-		Where("installation_id = ?", installationID).
-		Where("configuration->>'message_ts' = ?", messageTS).
-		Where("configuration->>'channel_id' = ?", channelID).
-		Where("configuration->>'type' = ?", "button_click").
-		First(&subscription).
-		Error
+	query := tx.Where("installation_id = ?", installationID)
+	for field, value := range filters {
+		query = query.Where(field+" = ?", value)
+	}
 
+	err := query.First(&subscription).Error
 	if err != nil {
 		return nil, err
 	}

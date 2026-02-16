@@ -271,8 +271,8 @@ func Test__WaitForButtonClick__HandleAction(t *testing.T) {
 		assert.Equal(t, "approve", payload["value"])
 		assert.NotNil(t, payload["clicked_at"])
 
-		// Verify subscription was cleaned up
-		assert.Empty(t, integrationCtx.Subscriptions)
+		// Note: Subscriptions are no longer manually cleaned up.
+		// They are automatically cleaned up when the node is deleted.
 	})
 
 	t.Run("timeout -> emits timeout event and cleans up subscription", func(t *testing.T) {
@@ -306,8 +306,8 @@ func Test__WaitForButtonClick__HandleAction(t *testing.T) {
 		payload := wrappedPayload["data"].(map[string]any)
 		assert.NotNil(t, payload["timeout_at"])
 
-		// Verify subscription was cleaned up
-		assert.Empty(t, integrationCtx.Subscriptions)
+		// Note: Subscriptions are no longer manually cleaned up.
+		// They are automatically cleaned up when the node is deleted.
 	})
 
 	t.Run("already finished -> no emit", func(t *testing.T) {
@@ -336,7 +336,7 @@ func Test__WaitForButtonClick__HandleAction(t *testing.T) {
 func Test__WaitForButtonClick__Cancel(t *testing.T) {
 	component := &WaitForButtonClick{}
 
-	t.Run("with active subscription -> cleans up subscription", func(t *testing.T) {
+	t.Run("with active subscription -> no-op", func(t *testing.T) {
 		subscriptionID := uuid.New()
 		subscriptionIDStr := subscriptionID.String()
 		integrationCtx := &contexts.IntegrationContext{
@@ -356,8 +356,8 @@ func Test__WaitForButtonClick__Cancel(t *testing.T) {
 		})
 
 		require.NoError(t, err)
-		// Verify subscription was cleaned up
-		assert.Empty(t, integrationCtx.Subscriptions)
+		// Note: Cancel no longer cleans up subscriptions.
+		// Subscriptions are automatically cleaned up when the node is deleted.
 	})
 
 	t.Run("without subscription -> no error", func(t *testing.T) {
@@ -376,21 +376,5 @@ func Test__WaitForButtonClick__Cancel(t *testing.T) {
 		})
 
 		require.NoError(t, err)
-	})
-
-	t.Run("with invalid metadata -> returns error", func(t *testing.T) {
-		integrationCtx := &contexts.IntegrationContext{
-			Subscriptions: []contexts.Subscription{},
-		}
-		metadata := &contexts.MetadataContext{
-			Metadata: "invalid",
-		}
-
-		err := component.Cancel(core.ExecutionContext{
-			Integration: integrationCtx,
-			Metadata:    metadata,
-		})
-
-		require.ErrorContains(t, err, "failed to decode metadata")
 	})
 }
