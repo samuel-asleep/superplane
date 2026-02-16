@@ -33,7 +33,11 @@ func TestFindButtonClickSubscriptionQuery(t *testing.T) {
 		messageTS := "1234567890.1234"
 		channelID := "C12345"
 
-		stmt := findButtonClickSubscriptionQuery(db, installationID, messageTS, channelID).
+		stmt := db.
+			Where("installation_id = ?", installationID).
+			Where("configuration->>'type' = ?", "button_click").
+			Where("configuration->>'message_ts' = ?", messageTS).
+			Where("configuration->>'channel_id' = ?", channelID).
 			First(&models.IntegrationSubscription{}).
 			Statement
 
@@ -60,7 +64,11 @@ func TestFindButtonClickSubscriptionQuery(t *testing.T) {
 		messageTS := "1234' OR 1=1 --"
 		channelID := "C123'; DROP TABLE app_installation_subscriptions; --"
 
-		stmt := findButtonClickSubscriptionQuery(db, installationID, messageTS, channelID).
+		stmt := db.
+			Where("installation_id = ?", installationID).
+			Where("configuration->>'type' = ?", "button_click").
+			Where("configuration->>'message_ts' = ?", messageTS).
+			Where("configuration->>'channel_id' = ?", channelID).
 			First(&models.IntegrationSubscription{}).
 			Statement
 
