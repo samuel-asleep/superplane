@@ -1,6 +1,7 @@
 package models
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
@@ -80,16 +81,27 @@ func ListIntegrationSubscriptions(tx *gorm.DB, installationID uuid.UUID) ([]Node
 	return subscriptions, nil
 }
 
-// FindIntegrationSubscriptionByConfigFields finds a subscription by installation_id and arbitrary configuration fields.
-// This is a generic function that can be used by any integration to query subscriptions.
-// The filters parameter is a map of JSON field paths to their expected values.
-// Example: filters["configuration->>'message_ts'"] = messageTS
+// FindIntegrationSubscriptionByConfigFields finds a subscription by installation_id and configuration fields.
+// The filters parameter is a map of logical field names to their expected values.
+// Supported field names: "message_ts", "channel_id", "type"
+// Returns an error if an unsupported field name is provided.
 func FindIntegrationSubscriptionByConfigFields(tx *gorm.DB, installationID uuid.UUID, filters map[string]string) (*IntegrationSubscription, error) {
+	// Allowlist of supported configuration field names mapped to safe SQL expressions
+	allowedFields := map[string]string{
+		"message_ts": "configuration->>'message_ts'",
+		"channel_id": "configuration->>'channel_id'",
+		"type":       "configuration->>'type'",
+	}
+
 	var subscription IntegrationSubscription
 
 	query := tx.Where("installation_id = ?", installationID)
-	for field, value := range filters {
-		query = query.Where(field+" = ?", value)
+	for fieldName, value := range filters {
+		sqlExpression, ok := allowedFields[fieldName]
+		if !ok {
+			return nil, fmt.Errorf("unsupported configuration field: %s", fieldName)
+		}
+		query = query.Where(sqlExpression+" = ?", value)
 	}
 
 	err := query.First(&subscription).Error
