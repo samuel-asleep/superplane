@@ -445,9 +445,9 @@ func (s *Slack) handleInteractivity(ctx core.HTTPRequestContext, body []byte) {
 
 	// Use generic query to find subscription by Slack-specific fields
 	subscription, err := models.FindIntegrationSubscriptionByConfigFields(database.Conn(), ctx.Integration.ID(), map[string]string{
-		"configuration->>'message_ts'": messageTS,
-		"configuration->>'channel_id'": channelID,
-		"configuration->>'type'":       "button_click",
+		"message_ts": messageTS,
+		"channel_id": channelID,
+		"type":       "button_click",
 	})
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
