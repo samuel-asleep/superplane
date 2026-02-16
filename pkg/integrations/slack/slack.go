@@ -10,7 +10,6 @@ import (
 	"io"
 	"net/http"
 	"net/url"
-	"os"
 	"slices"
 	"strconv"
 	"strings"
@@ -37,7 +36,6 @@ To complete the Slack app setup:
 5.  **Get Bot Token**: In "OAuth & Permissions", copy the "**Bot User OAuth Token**"
 6.  **Update Configuration**: Paste the "Bot User OAuth Token" and "Signing Secret" into the app installation configuration fields in SuperPlane and save
 `
-	apiBasePath = "/api/v1"
 )
 
 func init() {
@@ -199,23 +197,6 @@ func (s *Slack) appManifest(ctx core.SyncContext) ([]byte, error) {
 		appURL = ctx.BaseURL
 	}
 
-	// Determine the API base path to use. If PUBLIC_API_BASE_PATH ends with /api/v1,
-	// use it as-is and don't append /api/v1 again. Otherwise, use the public path
-	// as a prefix and append /api/v1.
-	publicPath := os.Getenv("PUBLIC_API_BASE_PATH")
-	var fullAPIPath string
-
-	if publicPath == "" {
-		// No public path set, use default /api/v1
-		fullAPIPath = apiBasePath
-	} else if strings.HasSuffix(publicPath, apiBasePath) {
-		// Public path already ends with /api/v1 (including the case where it equals /api/v1), use it as-is
-		fullAPIPath = publicPath
-	} else {
-		// Public path is something else (e.g. /v), append /api/v1
-		fullAPIPath = strings.TrimRight(publicPath, "/") + apiBasePath
-	}
-
 	//
 	// TODO: a few other options to consider here:
 	// features.app_home.*
@@ -270,7 +251,7 @@ func (s *Slack) appManifest(ctx core.SyncContext) ([]byte, error) {
 		},
 		"settings": map[string]any{
 			"event_subscriptions": map[string]any{
-				"request_url": fmt.Sprintf("%s%s/integrations/%s/events", appURL, fullAPIPath, ctx.Integration.ID().String()),
+				"request_url": fmt.Sprintf("%s/api/v1/integrations/%s/events", appURL, ctx.Integration.ID().String()),
 				"bot_events": []string{
 					"app_mention",
 					"reaction_added",
@@ -283,7 +264,7 @@ func (s *Slack) appManifest(ctx core.SyncContext) ([]byte, error) {
 			},
 			"interactivity": map[string]any{
 				"is_enabled":  true,
-				"request_url": fmt.Sprintf("%s%s/integrations/%s/interactions", appURL, fullAPIPath, ctx.Integration.ID().String()),
+				"request_url": fmt.Sprintf("%s/api/v1/integrations/%s/interactions", appURL, ctx.Integration.ID().String()),
 			},
 			"org_deploy_enabled":  false,
 			"socket_mode_enabled": false,
