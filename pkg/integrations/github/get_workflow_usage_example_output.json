@@ -1,0 +1,14 @@
+{
+  "data": {
+    "minutes_used": 1840.5,
+    "minutes_used_breakdown": {
+      "UBUNTU": 1200.0,
+      "WINDOWS": 400.5,
+      "MACOS": 240.0
+    },
+    "included_minutes": 3000.0,
+    "total_paid_minutes_used": 0.0
+  },
+  "timestamp": "2026-02-17T20:00:00Z",
+  "type": "github.workflowUsage"
+}
