@@ -30,6 +30,7 @@ import { CardGrid, LinkCard } from "@astrojs/starlight/components";
   <LinkCard title="Delete Release" href="#delete-release" description="Delete a release from a GitHub repository" />
   <LinkCard title="Get Issue" href="#get-issue" description="Get a GitHub issue by number" />
   <LinkCard title="Get Release" href="#get-release" description="Get a release from a GitHub repository" />
+  <LinkCard title="Get Workflow Usage" href="#get-workflow-usage" description="Retrieve billable GitHub Actions usage for the organization" />
   <LinkCard title="Publish Commit Status" href="#publish-commit-status" description="Publish a status check to a GitHub commit" />
   <LinkCard title="Run Workflow" href="#run-workflow" description="Run GitHub Actions workflow" />
   <LinkCard title="Update Issue" href="#update-issue" description="Update a GitHub issue" />
@@ -1280,6 +1281,80 @@ Returns release information including:
   "type": "github.release"
 }
 ```
+
+<a id="get-workflow-usage"></a>
+
+## Get Workflow Usage
+
+The Get Workflow Usage component retrieves billable GitHub Actions usage (minutes) for the installation's organization.
+
+### Prerequisites
+
+This component requires the GitHub App to have **Organization permission: Administration (read)**.
+
+**Important**: Existing installations will need to approve the new permission when prompted by GitHub. Until the permission is granted, this component will return a 403 error.
+
+### Use Cases
+
+- **Billing Monitoring**: Track GitHub Actions usage for billing purposes
+- **Quota Management**: Monitor usage to avoid exceeding billing quotas
+- **Cost Control**: Alert when usage approaches limits or budget thresholds
+- **Usage Reporting**: Generate monthly or periodic usage reports for compliance
+- **Resource Planning**: Analyze runner usage patterns by OS type
+
+### Behavior
+
+- Returns billing data for the **current billing cycle** only
+- Only private repositories on GitHub-hosted runners accrue billable minutes
+- Public repositories and self-hosted runners show zero billable usage
+- Usage is aggregated at the organization level
+- Cannot filter by specific repositories, time period, or runner OS
+
+### Configuration
+
+No configuration fields required - this component automatically retrieves organization-wide billing data from the GitHub App installation.
+
+### Output
+
+Returns usage data with:
+- `minutes_used`: Total billable minutes used in the current billing cycle
+- `minutes_used_breakdown`: Map of minutes by runner OS (e.g., "UBUNTU": 120, "WINDOWS": 60, "MACOS": 30)
+- `included_minutes`: Number of free minutes included in the plan
+- `total_paid_minutes_used`: Total paid minutes (beyond included minutes)
+
+**Note**: Breakdown is by OS (runner type), not by individual workflow or repository.
+
+### Example Output
+
+```json
+{
+  "data": {
+    "minutes_used": 1840.5,
+    "minutes_used_breakdown": {
+      "UBUNTU": 1200.0,
+      "WINDOWS": 400.5,
+      "MACOS": 240.0
+    },
+    "included_minutes": 3000.0,
+    "total_paid_minutes_used": 0.0
+  },
+  "timestamp": "2026-02-17T20:00:00Z",
+  "type": "github.workflowUsage"
+}
+```
+
+### API Limitations
+
+The GitHub billing API returns current billing cycle data only. It does not support:
+- Filtering by specific repositories
+- Historical data or custom time ranges
+- Per-workflow breakdown (only per-OS breakdown available)
+
+### References
+
+- [GitHub Billing Usage API](https://docs.github.com/rest/billing/usage)
+- [Permissions required for GitHub Apps - Administration](https://docs.github.com/en/rest/overview/permissions-required-for-github-apps#organization-permissions-for-administration)
+- [Viewing your usage of metered products](https://docs.github.com/en/billing/managing-billing-for-github-actions/viewing-your-github-actions-usage)
 
 <a id="publish-commit-status"></a>
 
