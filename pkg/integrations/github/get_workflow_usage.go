@@ -106,7 +106,7 @@ func (g *GetWorkflowUsage) Configuration() []configuration.Field {
 }
 
 func (g *GetWorkflowUsage) Setup(ctx core.SetupContext) error {
-	// Repositories are optional, so we don't enforce repo validation here
+	// No configuration or validation required - component retrieves org-level billing data
 	return nil
 }
 
