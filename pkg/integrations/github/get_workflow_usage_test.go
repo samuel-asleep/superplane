@@ -55,16 +55,22 @@ func Test__GetWorkflowUsage__Setup(t *testing.T) {
 		})
 
 		require.NoError(t, err)
-		// Verify metadata was stored
+		// Verify metadata was stored with full repository objects
 		metadata := nodeMetadataCtx.Get()
 		require.NotNil(t, metadata)
 		metadataMap, ok := metadata.(map[string]any)
 		require.True(t, ok)
 		repos, ok := metadataMap["repositories"]
 		require.True(t, ok)
-		reposList, ok := repos.([]string)
+		
+		// Should be a slice of Repository objects
+		reposList, ok := repos.([]Repository)
 		require.True(t, ok)
-		require.Equal(t, []string{"hello", "world"}, reposList)
+		require.Len(t, reposList, 2)
+		require.Equal(t, "hello", reposList[0].Name)
+		require.Equal(t, "world", reposList[1].Name)
+		require.Equal(t, int64(123456), reposList[0].ID)
+		require.Equal(t, int64(123457), reposList[1].ID)
 	})
 
 	t.Run("setup stores max 5 repositories in metadata", func(t *testing.T) {

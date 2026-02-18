@@ -65,7 +65,7 @@ This action calls GitHub's **billing usage** API, which requires the GitHub App 
 
 ## Configuration
 
-- **Repositories** (optional, multiselect): Select one or more specific repositories to track. These will be included in the output for reference (max 5). Note: The usage data returned is organization-wide and not filtered by repository.
+- **Repositories** (optional, multiselect): Select one or more specific repositories to track. These will be included in the output for reference (max 5) and stored in node metadata with full repository details (ID, name, URL). Note: The usage data returned is organization-wide and not filtered by repository.
 
 ## Output
 
@@ -138,22 +138,24 @@ func (g *GetWorkflowUsage) Setup(ctx core.SetupContext) error {
 			return fmt.Errorf("failed to decode application metadata: %w", err)
 		}
 
-		// Check each repository exists
-		for _, repo := range config.Repositories {
+		// Check each repository exists and collect full repository objects
+		var selectedRepos []Repository
+		for _, repoName := range config.Repositories {
 			found := false
 			for _, availableRepo := range appMetadata.Repositories {
-				if availableRepo.Name == repo {
+				if availableRepo.Name == repoName {
+					selectedRepos = append(selectedRepos, availableRepo)
 					found = true
 					break
 				}
 			}
 			if !found {
-				return fmt.Errorf("repository %s is not accessible to app installation", repo)
+				return fmt.Errorf("repository %s is not accessible to app installation", repoName)
 			}
 		}
 
 		// Save selected repositories to node metadata (max 5)
-		reposToStore := config.Repositories
+		reposToStore := selectedRepos
 		if len(reposToStore) > 5 {
 			reposToStore = reposToStore[:5]
 		}
