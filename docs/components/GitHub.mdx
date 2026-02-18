@@ -1290,9 +1290,15 @@ The Get Workflow Usage component retrieves billable GitHub Actions usage (minute
 
 ### Prerequisites
 
-This component requires the GitHub App to have **Organization permission: Organization administration (read)**.
+This component requires:
 
-**Important**: Existing installations will need to approve the new permission when prompted by GitHub. Until the permission is granted, this component will return a 403 error.
+1. The GitHub App to have **Organization permission: Organization administration (read)**
+2. **GitHub Enhanced Billing Platform**: As of early 2025, GitHub deprecated the old billing APIs. Your organization must be migrated to GitHub's enhanced billing platform for this component to work.
+
+**Important**: 
+- Existing installations will need to approve the new permission when prompted by GitHub
+- If you receive a 410 error, your organization needs to migrate to the enhanced billing platform
+- Until the permission is granted, this action will return a 403 error
 
 ### Use Cases
 
@@ -1313,6 +1319,12 @@ This component requires the GitHub App to have **Organization permission: Organi
 ### Configuration
 
 - **Repositories** (optional, multiselect): Select one or more repositories to track. These will be included in the output for reference (max 5) and stored in node metadata with full repository details (ID, name, URL). Note: The usage data returned is organization-wide and not filtered by repository.
+
+### Node Metadata
+
+The component stores repository information in node metadata for display in the workflow canvas:
+- Repository ID, name, and URL for each selected repository (max 5)
+- This makes it easy to see which repositories are being tracked at a glance
 
 ### Output
 
@@ -1348,6 +1360,7 @@ Returns usage data with:
 ### References
 
 - [GitHub Billing Usage API](https://docs.github.com/rest/billing/usage)
+- [GitHub Enhanced Billing Platform](https://docs.github.com/billing/using-the-new-billing-platform)
 - [Permissions required for GitHub Apps - Organization Administration](https://docs.github.com/en/rest/overview/permissions-required-for-github-apps#organization-permissions-for-administration)
 - [Viewing your usage of metered products](https://docs.github.com/en/billing/managing-billing-for-github-actions/viewing-your-github-actions-usage)
 

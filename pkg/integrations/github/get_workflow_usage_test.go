@@ -3,6 +3,7 @@ package github
 import (
 	"testing"
 
+	"github.com/mitchellh/mapstructure"
 	"github.com/stretchr/testify/require"
 	"github.com/superplanehq/superplane/pkg/core"
 	contexts "github.com/superplanehq/superplane/test/support/contexts"
@@ -55,22 +56,22 @@ func Test__GetWorkflowUsage__Setup(t *testing.T) {
 		})
 
 		require.NoError(t, err)
-		// Verify metadata was stored with full repository objects
+		// Verify metadata was stored with proper structure
 		metadata := nodeMetadataCtx.Get()
 		require.NotNil(t, metadata)
-		metadataMap, ok := metadata.(map[string]any)
-		require.True(t, ok)
-		repos, ok := metadataMap["repositories"]
-		require.True(t, ok)
-		
-		// Should be a slice of Repository objects
-		reposList, ok := repos.([]Repository)
-		require.True(t, ok)
-		require.Len(t, reposList, 2)
-		require.Equal(t, "hello", reposList[0].Name)
-		require.Equal(t, "world", reposList[1].Name)
-		require.Equal(t, int64(123456), reposList[0].ID)
-		require.Equal(t, int64(123457), reposList[1].ID)
+
+		// Should be GetWorkflowUsageMetadata struct
+		var usageMetadata GetWorkflowUsageMetadata
+		err = mapstructure.Decode(metadata, &usageMetadata)
+		require.NoError(t, err)
+
+		require.Len(t, usageMetadata.Repositories, 2)
+		require.Equal(t, "hello", usageMetadata.Repositories[0].Name)
+		require.Equal(t, "world", usageMetadata.Repositories[1].Name)
+		require.Equal(t, int64(123456), usageMetadata.Repositories[0].ID)
+		require.Equal(t, int64(123457), usageMetadata.Repositories[1].ID)
+		require.Equal(t, "https://github.com/testhq/hello", usageMetadata.Repositories[0].URL)
+		require.Equal(t, "https://github.com/testhq/world", usageMetadata.Repositories[1].URL)
 	})
 
 	t.Run("setup stores max 5 repositories in metadata", func(t *testing.T) {

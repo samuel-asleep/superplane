@@ -26,6 +26,16 @@ type GetWorkflowUsageConfiguration struct {
 	Repositories []string `mapstructure:"repositories"`
 }
 
+type GetWorkflowUsageMetadata struct {
+	Repositories []RepositoryMetadata `json:"repositories" mapstructure:"repositories"`
+}
+
+type RepositoryMetadata struct {
+	ID   int64  `json:"id" mapstructure:"id"`
+	Name string `json:"name" mapstructure:"name"`
+	URL  string `json:"url" mapstructure:"url"`
+}
+
 type WorkflowUsageResult struct {
 	MinutesUsed          float64                 `json:"minutes_used" mapstructure:"minutes_used"`
 	MinutesUsedBreakdown gh.MinutesUsedBreakdown `json:"minutes_used_breakdown" mapstructure:"minutes_used_breakdown"`
@@ -51,9 +61,15 @@ func (g *GetWorkflowUsage) Documentation() string {
 
 ## Prerequisites
 
-This action calls GitHub's **billing usage** API, which requires the GitHub App to have **Organization permission: Organization administration (read)**. 
+This action calls GitHub's **billing usage** API, which requires:
 
-**Important**: Existing installations will need to approve the new permission when prompted by GitHub. Until the permission is granted, this action will return a 403 error.
+1. The GitHub App to have **Organization permission: Organization administration (read)**
+2. **GitHub Enhanced Billing Platform**: As of early 2025, GitHub deprecated the old billing APIs. Your organization must be migrated to GitHub's enhanced billing platform for this component to work.
+
+**Important**: 
+- Existing installations will need to approve the new permission when prompted by GitHub
+- If you receive a 410 error, your organization needs to migrate to the enhanced billing platform
+- Until the permission is granted, this action will return a 403 error
 
 ## Behavior
 
@@ -78,6 +94,12 @@ Returns usage data with:
 
 **Note**: Breakdown is by runner OS type, not by individual workflow or repository.
 
+## Node Metadata
+
+The component stores repository information in node metadata:
+- Repository ID, name, and URL for each selected repository (max 5)
+- This metadata is displayed in the workflow canvas for easy reference
+
 ## Use Cases
 
 - **Billing Monitoring**: Track GitHub Actions usage for billing purposes
@@ -89,6 +111,7 @@ Returns usage data with:
 ## References
 
 - [GitHub Billing Usage API](https://docs.github.com/rest/billing/usage)
+- [GitHub Enhanced Billing Platform](https://docs.github.com/billing/using-the-new-billing-platform)
 - [Permissions required for GitHub Apps - Organization Administration](https://docs.github.com/en/rest/overview/permissions-required-for-github-apps#organization-permissions-for-administration)
 - [Viewing your usage of metered products](https://docs.github.com/en/billing/managing-billing-for-github-actions/viewing-your-github-actions-usage)`
 }
@@ -139,12 +162,16 @@ func (g *GetWorkflowUsage) Setup(ctx core.SetupContext) error {
 		}
 
 		// Check each repository exists and collect full repository objects
-		var selectedRepos []Repository
+		var selectedRepos []RepositoryMetadata
 		for _, repoName := range config.Repositories {
 			found := false
 			for _, availableRepo := range appMetadata.Repositories {
 				if availableRepo.Name == repoName {
-					selectedRepos = append(selectedRepos, availableRepo)
+					selectedRepos = append(selectedRepos, RepositoryMetadata{
+						ID:   availableRepo.ID,
+						Name: availableRepo.Name,
+						URL:  availableRepo.URL,
+					})
 					found = true
 					break
 				}
@@ -159,9 +186,12 @@ func (g *GetWorkflowUsage) Setup(ctx core.SetupContext) error {
 		if len(reposToStore) > 5 {
 			reposToStore = reposToStore[:5]
 		}
-		ctx.Metadata.Set(map[string]any{
-			"repositories": reposToStore,
-		})
+
+		metadata := GetWorkflowUsageMetadata{
+			Repositories: reposToStore,
+		}
+
+		return ctx.Metadata.Set(metadata)
 	}
 
 	return nil
@@ -184,13 +214,16 @@ func (g *GetWorkflowUsage) Execute(ctx core.ExecutionContext) error {
 	}
 
 	// Use the standard billing API which works for all organizations
-	// Note: This returns organization-wide data for the current billing cycle
+	// NOTE: As of early 2025, GitHub deprecated the old billing endpoints in favor
+	// of the enhanced billing platform. Organizations need to be on the enhanced
+	// billing platform for this API to work. If you get a 410 error, your org needs
+	// to migrate to enhanced billing.
 	billing, _, err := client.Billing.GetActionsBillingOrg(
 		context.Background(),
 		appMetadata.Owner,
 	)
 	if err != nil {
-		return fmt.Errorf("failed to get billing usage: %w", err)
+		return fmt.Errorf("failed to get billing usage (organization may need to migrate to GitHub's enhanced billing platform): %w", err)
 	}
 
 	result := WorkflowUsageResult{
