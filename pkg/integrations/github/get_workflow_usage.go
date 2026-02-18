@@ -61,38 +61,34 @@ func (g *GetWorkflowUsage) Documentation() string {
 
 ## Prerequisites
 
-This action calls GitHub's **billing usage** API, which requires:
+This action calls GitHub's **billing usage** API, which requires the GitHub App to have **Organization permission: Organization administration (read)**. 
 
-1. The GitHub App to have **Organization permission: Organization administration (read)**
-2. **GitHub Enhanced Billing Platform**: As of early 2025, GitHub deprecated the old billing APIs. Your organization must be migrated to GitHub's enhanced billing platform for this component to work.
+**Important**: Existing installations will need to approve the new permission when prompted by GitHub. Until the permission is granted, this action will return a 403 error.
 
-**Important**: 
-- Existing installations will need to approve the new permission when prompted by GitHub
-- If you receive a 410 error, your organization needs to migrate to the enhanced billing platform
-- Until the permission is granted, this action will return a 403 error
+**Note**: This component uses GitHub's enhanced billing usage report API, which provides detailed usage information.
 
 ## Behavior
 
 - Returns billing data for the **current billing cycle** 
 - Only private repositories on GitHub-hosted runners accrue billable minutes
 - Public repositories and self-hosted runners show zero billable usage
-- Returns organization-wide usage data
-- Note: Repository selection is for reference/tracking only; the API returns org-wide totals
+- Can filter by specific repositories when selected
+- Uses enhanced billing platform API for accurate reporting
 
 ## Configuration
 
-- **Repositories** (optional, multiselect): Select one or more specific repositories to track. These will be included in the output for reference (max 5) and stored in node metadata with full repository details (ID, name, URL). Note: The usage data returned is organization-wide and not filtered by repository.
+- **Repositories** (optional, multiselect): Select one or more specific repositories to track. These will be included in the output for reference (max 5) and stored in node metadata with full repository details (ID, name, URL). When repositories are selected, only usage for those repositories is included in the totals.
 
 ## Output
 
 Returns usage data with:
 - ` + "`minutes_used`" + `: Total billable minutes used in the current billing cycle
-- ` + "`minutes_used_breakdown`" + `: Map of minutes by runner OS (e.g., "UBUNTU": 120, "WINDOWS": 60, "MACOS": 30)
-- ` + "`included_minutes`" + `: Number of free minutes included in the plan
-- ` + "`total_paid_minutes_used`" + `: Total paid minutes (beyond included minutes)
+- ` + "`minutes_used_breakdown`" + `: Map of minutes by runner SKU (e.g., "Actions Linux": 120, "Actions Windows": 60, "Actions macOS": 30)
+- ` + "`included_minutes`" + `: Always 0 (not provided by enhanced billing API)
+- ` + "`total_paid_minutes_used`" + `: Estimated paid minutes based on cost data
 - ` + "`repositories`" + `: List of selected repositories for tracking (max 5)
 
-**Note**: Breakdown is by runner OS type, not by individual workflow or repository.
+**Note**: Breakdown is by runner SKU (OS and type), not by individual workflow.
 
 ## Node Metadata
 
@@ -213,24 +209,64 @@ func (g *GetWorkflowUsage) Execute(ctx core.ExecutionContext) error {
 		return fmt.Errorf("failed to initialize GitHub client: %w", err)
 	}
 
-	// Use the standard billing API which works for all organizations
-	// NOTE: As of early 2025, GitHub deprecated the old billing endpoints in favor
-	// of the enhanced billing platform. Organizations need to be on the enhanced
-	// billing platform for this API to work. If you get a 410 error, your org needs
-	// to migrate to enhanced billing.
-	billing, _, err := client.Billing.GetActionsBillingOrg(
+	// Use the enhanced billing usage report API
+	// This returns detailed usage information with per-repository breakdown
+	report, _, err := client.Billing.GetUsageReportOrg(
 		context.Background(),
 		appMetadata.Owner,
+		nil, // No time filtering - returns current billing cycle
 	)
 	if err != nil {
-		return fmt.Errorf("failed to get billing usage (organization may need to migrate to GitHub's enhanced billing platform): %w", err)
+		return fmt.Errorf("failed to get billing usage: %w", err)
 	}
 
+	// Aggregate usage data from the report
 	result := WorkflowUsageResult{
-		MinutesUsed:          billing.TotalMinutesUsed,
-		MinutesUsedBreakdown: billing.MinutesUsedBreakdown,
-		IncludedMinutes:      billing.IncludedMinutes,
-		TotalPaidMinutesUsed: billing.TotalPaidMinutesUsed,
+		MinutesUsed:          0,
+		MinutesUsedBreakdown: make(gh.MinutesUsedBreakdown),
+		IncludedMinutes:      0, // Enhanced billing API doesn't include this field
+		TotalPaidMinutesUsed: 0,
+	}
+
+	// Process usage items
+	for _, item := range report.UsageItems {
+		// Only process Actions-related items
+		if item.GetProduct() != "actions" {
+			continue
+		}
+
+		// Filter by repositories if specified
+		if len(config.Repositories) > 0 {
+			found := false
+			repoName := item.GetRepositoryName()
+			for _, repo := range config.Repositories {
+				if repoName == repo {
+					found = true
+					break
+				}
+			}
+			if !found {
+				continue
+			}
+		}
+
+		// Aggregate total minutes (quantity represents minutes for Actions)
+		if item.Quantity != nil {
+			result.MinutesUsed += *item.Quantity
+		}
+
+		// Aggregate by SKU (runner OS type)
+		sku := item.GetSKU()
+		if sku != "" && item.Quantity != nil {
+			result.MinutesUsedBreakdown[sku] = result.MinutesUsedBreakdown[sku] + int(*item.Quantity)
+		}
+
+		// Calculate paid minutes from cost
+		// The enhanced billing API provides cost information
+		if item.NetAmount != nil && *item.NetAmount > 0 {
+			// Approximate paid minutes from cost (rough estimate at $0.008/min average)
+			result.TotalPaidMinutesUsed += *item.NetAmount / 0.008
+		}
 	}
 
 	// Add selected repositories to output (max 5)

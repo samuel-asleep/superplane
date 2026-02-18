@@ -1290,15 +1290,11 @@ The Get Workflow Usage component retrieves billable GitHub Actions usage (minute
 
 ### Prerequisites
 
-This component requires:
+This component requires the GitHub App to have **Organization permission: Organization administration (read)**.
 
-1. The GitHub App to have **Organization permission: Organization administration (read)**
-2. **GitHub Enhanced Billing Platform**: As of early 2025, GitHub deprecated the old billing APIs. Your organization must be migrated to GitHub's enhanced billing platform for this component to work.
+**Important**: Existing installations will need to approve the new permission when prompted by GitHub. Until the permission is granted, this action will return a 403 error.
 
-**Important**: 
-- Existing installations will need to approve the new permission when prompted by GitHub
-- If you receive a 410 error, your organization needs to migrate to the enhanced billing platform
-- Until the permission is granted, this action will return a 403 error
+**Note**: This component uses GitHub's enhanced billing usage report API, which provides detailed usage information.
 
 ### Use Cases
 
@@ -1313,12 +1309,12 @@ This component requires:
 - Returns billing data for the **current billing cycle**
 - Only private repositories on GitHub-hosted runners accrue billable minutes
 - Public repositories and self-hosted runners show zero billable usage
-- Returns organization-wide usage data
-- Repository selection is for reference/tracking only; API returns org-wide totals
+- Can filter by specific repositories when selected
+- Uses enhanced billing platform API for accurate reporting
 
 ### Configuration
 
-- **Repositories** (optional, multiselect): Select one or more repositories to track. These will be included in the output for reference (max 5) and stored in node metadata with full repository details (ID, name, URL). Note: The usage data returned is organization-wide and not filtered by repository.
+- **Repositories** (optional, multiselect): Select one or more repositories to track. These will be included in the output for reference (max 5) and stored in node metadata with full repository details (ID, name, URL). When repositories are selected, only usage for those repositories is included in the totals.
 
 ### Node Metadata
 
@@ -1330,12 +1326,12 @@ The component stores repository information in node metadata for display in the 
 
 Returns usage data with:
 - `minutes_used`: Total billable minutes used in the current billing cycle
-- `minutes_used_breakdown`: Map of minutes by runner OS (e.g., "UBUNTU": 120, "WINDOWS": 60, "MACOS": 30)
-- `included_minutes`: Number of free minutes included in the plan
-- `total_paid_minutes_used`: Total paid minutes (beyond included minutes)
+- `minutes_used_breakdown`: Map of minutes by runner SKU (e.g., "Actions Linux": 120, "Actions Windows": 60, "Actions macOS": 30)
+- `included_minutes`: Always 0 (not provided by enhanced billing API)
+- `total_paid_minutes_used`: Estimated paid minutes based on cost data
 - `repositories`: List of selected repositories for tracking (max 5)
 
-**Note**: Breakdown is by runner OS type, not by individual workflow.
+**Note**: Breakdown is by runner SKU (OS and type), not by individual workflow.
 
 ### Example Output
 
@@ -1344,12 +1340,12 @@ Returns usage data with:
   "data": {
     "minutes_used": 1840.5,
     "minutes_used_breakdown": {
-      "UBUNTU": 1200.0,
-      "WINDOWS": 400.5,
-      "MACOS": 240.0
+      "Actions Linux": 1200.0,
+      "Actions Windows": 400.5,
+      "Actions macOS": 240.0
     },
-    "included_minutes": 3000.0,
-    "total_paid_minutes_used": 0.0,
+    "included_minutes": 0,
+    "total_paid_minutes_used": 150.0,
     "repositories": ["repo1", "repo2", "repo3"]
   },
   "timestamp": "2026-02-17T20:00:00Z",
