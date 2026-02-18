@@ -15,9 +15,10 @@ func Test__GetWorkflowUsage__Setup(t *testing.T) {
 
 	t.Run("setup succeeds with no configuration", func(t *testing.T) {
 		integrationCtx := &contexts.IntegrationContext{}
+		nodeMetadataCtx := &contexts.MetadataContext{}
 		err := component.Setup(core.SetupContext{
 			Integration:   integrationCtx,
-			Metadata:      &contexts.MetadataContext{},
+			Metadata:      nodeMetadataCtx,
 			Configuration: map[string]any{},
 		})
 
@@ -30,28 +31,56 @@ func Test__GetWorkflowUsage__Setup(t *testing.T) {
 				Repositories: []Repository{helloRepo, worldRepo},
 			},
 		}
+		nodeMetadataCtx := &contexts.MetadataContext{}
 		err := component.Setup(core.SetupContext{
 			Integration:   integrationCtx,
-			Metadata:      &contexts.MetadataContext{},
+			Metadata:      nodeMetadataCtx,
 			Configuration: map[string]any{"repositories": []string{}},
 		})
 
 		require.NoError(t, err)
 	})
 
-	t.Run("setup succeeds with valid repositories", func(t *testing.T) {
+	t.Run("setup succeeds with valid repositories and stores metadata", func(t *testing.T) {
 		integrationCtx := &contexts.IntegrationContext{
 			Metadata: Metadata{
 				Repositories: []Repository{helloRepo, worldRepo},
 			},
 		}
+		nodeMetadataCtx := &contexts.MetadataContext{}
 		err := component.Setup(core.SetupContext{
 			Integration:   integrationCtx,
-			Metadata:      &contexts.MetadataContext{},
+			Metadata:      nodeMetadataCtx,
 			Configuration: map[string]any{"repositories": []string{"hello", "world"}},
 		})
 
 		require.NoError(t, err)
+		// Verify metadata was stored
+		metadata := nodeMetadataCtx.Get()
+		require.NotNil(t, metadata)
+		metadataMap, ok := metadata.(map[string]any)
+		require.True(t, ok)
+		repos, ok := metadataMap["repositories"]
+		require.True(t, ok)
+		reposList, ok := repos.([]string)
+		require.True(t, ok)
+		require.Equal(t, []string{"hello", "world"}, reposList)
+	})
+
+	t.Run("setup stores max 5 repositories in metadata", func(t *testing.T) {
+		integrationCtx := &contexts.IntegrationContext{
+			Metadata: Metadata{
+				Repositories: []Repository{helloRepo, worldRepo},
+			},
+		}
+		nodeMetadataCtx := &contexts.MetadataContext{}
+		err := component.Setup(core.SetupContext{
+			Integration:   integrationCtx,
+			Metadata:      nodeMetadataCtx,
+			Configuration: map[string]any{"repositories": []string{"hello", "world", "repo3", "repo4", "repo5", "repo6"}},
+		})
+
+		require.ErrorContains(t, err, "not accessible") // Will fail validation first
 	})
 
 	t.Run("setup fails when repository is not accessible", func(t *testing.T) {

@@ -1300,29 +1300,30 @@ This component requires the GitHub App to have **Organization permission: Organi
 - **Quota Management**: Monitor usage to avoid exceeding billing quotas
 - **Cost Control**: Alert when usage approaches limits or budget thresholds
 - **Usage Reporting**: Generate monthly or periodic usage reports for compliance
-- **Repository Analysis**: Analyze runner usage patterns by repository
 - **Resource Planning**: Analyze runner usage patterns by OS type
 
 ### Behavior
 
-- Returns billing data for the **current billing cycle** using GitHub's enhanced billing API
+- Returns billing data for the **current billing cycle**
 - Only private repositories on GitHub-hosted runners accrue billable minutes
 - Public repositories and self-hosted runners show zero billable usage
-- Usage can be filtered by specific repositories or retrieved organization-wide
+- Returns organization-wide usage data
+- Repository selection is for reference/tracking only; API returns org-wide totals
 
 ### Configuration
 
-- **Repositories** (optional, multiselect): Select one or more specific repositories to check usage for. Leave empty for organization-wide usage.
+- **Repositories** (optional, multiselect): Select one or more repositories to track. These will be included in the output for reference (max 5). Note: The usage data returned is organization-wide and not filtered by repository.
 
 ### Output
 
 Returns usage data with:
 - `minutes_used`: Total billable minutes used in the current billing cycle
-- `minutes_used_breakdown`: Map of minutes by runner SKU (e.g., "Actions Linux": 120, "Actions Windows": 60, "Actions macOS": 30)
-- `included_minutes`: Not provided by enhanced billing API (always 0)
-- `total_paid_minutes_used`: Estimated paid minutes based on cost data
+- `minutes_used_breakdown`: Map of minutes by runner OS (e.g., "UBUNTU": 120, "WINDOWS": 60, "MACOS": 30)
+- `included_minutes`: Number of free minutes included in the plan
+- `total_paid_minutes_used`: Total paid minutes (beyond included minutes)
+- `repositories`: List of selected repositories for tracking (max 5)
 
-**Note**: Breakdown is by runner SKU (OS and type), not by individual workflow.
+**Note**: Breakdown is by runner OS type, not by individual workflow.
 
 ### Example Output
 
@@ -1331,12 +1332,13 @@ Returns usage data with:
   "data": {
     "minutes_used": 1840.5,
     "minutes_used_breakdown": {
-      "Actions Linux": 1200.0,
-      "Actions Windows": 400.5,
-      "Actions macOS": 240.0
+      "UBUNTU": 1200.0,
+      "WINDOWS": 400.5,
+      "MACOS": 240.0
     },
-    "included_minutes": 0,
-    "total_paid_minutes_used": 150.0
+    "included_minutes": 3000.0,
+    "total_paid_minutes_used": 0.0,
+    "repositories": ["repo1", "repo2", "repo3"]
   },
   "timestamp": "2026-02-17T20:00:00Z",
   "type": "github.workflowUsage"
