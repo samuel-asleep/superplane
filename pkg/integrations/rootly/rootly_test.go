@@ -51,6 +51,24 @@ func Test__Rootly__Sync(t *testing.T) {
 						}
 					`)),
 				},
+				{
+					StatusCode: http.StatusOK,
+					Body: io.NopCloser(strings.NewReader(`
+						{
+							"data": [
+								{
+									"id": "sev-123",
+									"type": "severities",
+									"attributes": {
+										"name": "SEV1",
+										"slug": "sev1",
+										"description": "Critical"
+									}
+								}
+							]
+						}
+					`)),
+				},
 			},
 		}
 
@@ -68,13 +86,18 @@ func Test__Rootly__Sync(t *testing.T) {
 
 		require.NoError(t, err)
 		assert.Equal(t, "ready", integrationCtx.State)
-		require.Len(t, httpContext.Requests, 1)
+		require.Len(t, httpContext.Requests, 2)
 		assert.Equal(t, "https://api.rootly.com/v1/services", httpContext.Requests[0].URL.String())
+		assert.Equal(t, "https://api.rootly.com/v1/severities", httpContext.Requests[1].URL.String())
 
 		metadata := integrationCtx.Metadata.(Metadata)
 		assert.Len(t, metadata.Services, 1)
 		assert.Equal(t, "svc-123", metadata.Services[0].ID)
 		assert.Equal(t, "Production API", metadata.Services[0].Name)
+		assert.Len(t, metadata.Severities, 1)
+		assert.Equal(t, "sev-123", metadata.Severities[0].ID)
+		assert.Equal(t, "SEV1", metadata.Severities[0].Name)
+		assert.Equal(t, "sev1", metadata.Severities[0].Slug)
 	})
 
 	t.Run("failed service list -> error", func(t *testing.T) {

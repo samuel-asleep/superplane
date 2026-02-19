@@ -382,4 +382,130 @@ func Test__OnEvent__HandleWebhook(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, 1, eventContext.Count())
 	})
+
+	t.Run("filtered by service -> emitted when resource ID matches", func(t *testing.T) {
+		service := "svc-1"
+		config := map[string]any{
+			"service": service,
+		}
+
+		body := []byte(`{"event":{"type":"incident_event.created","id":"evt-123","issued_at":"2025-01-01T00:00:00Z"},"data":{"id":"ie-123","event":"Test note","kind":"note","visibility":"internal","occurred_at":"2025-01-01T00:00:00Z","created_at":"2025-01-01T00:00:00Z","user_display_name":"Jane Doe","incident":{"id":"inc-123","title":"Test Incident","status":"started","severity":"sev1","services":[{"id":"svc-1","name":"prod-api","slug":"prod-api"}]}}}`)
+		secret := "test-secret"
+		timestamp := "1234567890"
+
+		headers := http.Header{}
+		headers.Set("X-Rootly-Signature", signatureFor(secret, timestamp, body))
+
+		eventContext := &contexts.EventContext{}
+		code, err := trigger.HandleWebhook(core.WebhookRequestContext{
+			Body:          body,
+			Headers:       headers,
+			Configuration: config,
+			Webhook:       &contexts.WebhookContext{Secret: secret},
+			Events:        eventContext,
+		})
+
+		require.Equal(t, http.StatusOK, code)
+		require.NoError(t, err)
+		require.Equal(t, 1, eventContext.Count())
+	})
+
+	t.Run("filtered by team -> emitted when resource ID matches", func(t *testing.T) {
+		team := "grp-1"
+		config := map[string]any{
+			"team": team,
+		}
+
+		body := []byte(`{"event":{"type":"incident_event.created","id":"evt-123","issued_at":"2025-01-01T00:00:00Z"},"data":{"id":"ie-123","event":"Test note","kind":"note","visibility":"internal","occurred_at":"2025-01-01T00:00:00Z","created_at":"2025-01-01T00:00:00Z","user_display_name":"Jane Doe","incident":{"id":"inc-123","title":"Test Incident","status":"started","severity":"sev1","groups":[{"id":"grp-1","name":"platform","slug":"platform"}]}}}`)
+		secret := "test-secret"
+		timestamp := "1234567890"
+
+		headers := http.Header{}
+		headers.Set("X-Rootly-Signature", signatureFor(secret, timestamp, body))
+
+		eventContext := &contexts.EventContext{}
+		code, err := trigger.HandleWebhook(core.WebhookRequestContext{
+			Body:          body,
+			Headers:       headers,
+			Configuration: config,
+			Webhook:       &contexts.WebhookContext{Secret: secret},
+			Events:        eventContext,
+		})
+
+		require.Equal(t, http.StatusOK, code)
+		require.NoError(t, err)
+		require.Equal(t, 1, eventContext.Count())
+	})
+
+	t.Run("filtered by severity -> emitted when resource ID matches via metadata", func(t *testing.T) {
+		severity := "sev-uuid-123"
+		config := map[string]any{
+			"severity": severity,
+		}
+
+		body := []byte(`{"event":{"type":"incident_event.created","id":"evt-123","issued_at":"2025-01-01T00:00:00Z"},"data":{"id":"ie-123","event":"Test note","kind":"note","visibility":"internal","occurred_at":"2025-01-01T00:00:00Z","created_at":"2025-01-01T00:00:00Z","user_display_name":"Jane Doe","incident":{"id":"inc-123","title":"Test Incident","status":"started","severity":"sev1"}}}`)
+		secret := "test-secret"
+		timestamp := "1234567890"
+
+		headers := http.Header{}
+		headers.Set("X-Rootly-Signature", signatureFor(secret, timestamp, body))
+
+		integrationCtx := &contexts.IntegrationContext{
+			Metadata: Metadata{
+				Severities: []Severity{
+					{ID: "sev-uuid-123", Name: "SEV1", Slug: "sev1"},
+				},
+			},
+		}
+
+		eventContext := &contexts.EventContext{}
+		code, err := trigger.HandleWebhook(core.WebhookRequestContext{
+			Body:          body,
+			Headers:       headers,
+			Configuration: config,
+			Webhook:       &contexts.WebhookContext{Secret: secret},
+			Events:        eventContext,
+			Integration:   integrationCtx,
+		})
+
+		require.Equal(t, http.StatusOK, code)
+		require.NoError(t, err)
+		require.Equal(t, 1, eventContext.Count())
+	})
+
+	t.Run("filtered by severity -> not emitted when resource ID does not match", func(t *testing.T) {
+		severity := "sev-uuid-456"
+		config := map[string]any{
+			"severity": severity,
+		}
+
+		body := []byte(`{"event":{"type":"incident_event.created","id":"evt-123","issued_at":"2025-01-01T00:00:00Z"},"data":{"id":"ie-123","event":"Test note","kind":"note","visibility":"internal","occurred_at":"2025-01-01T00:00:00Z","created_at":"2025-01-01T00:00:00Z","user_display_name":"Jane Doe","incident":{"id":"inc-123","title":"Test Incident","status":"started","severity":"sev1"}}}`)
+		secret := "test-secret"
+		timestamp := "1234567890"
+
+		headers := http.Header{}
+		headers.Set("X-Rootly-Signature", signatureFor(secret, timestamp, body))
+
+		integrationCtx := &contexts.IntegrationContext{
+			Metadata: Metadata{
+				Severities: []Severity{
+					{ID: "sev-uuid-123", Name: "SEV1", Slug: "sev1"},
+				},
+			},
+		}
+
+		eventContext := &contexts.EventContext{}
+		code, err := trigger.HandleWebhook(core.WebhookRequestContext{
+			Body:          body,
+			Headers:       headers,
+			Configuration: config,
+			Webhook:       &contexts.WebhookContext{Secret: secret},
+			Events:        eventContext,
+			Integration:   integrationCtx,
+		})
+
+		require.Equal(t, http.StatusOK, code)
+		require.NoError(t, err)
+		require.Equal(t, 0, eventContext.Count())
+	})
 }

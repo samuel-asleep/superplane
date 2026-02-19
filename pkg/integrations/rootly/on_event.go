@@ -85,26 +85,55 @@ func (t *OnEvent) Configuration() []configuration.Field {
 		{
 			Name:     "incidentStatus",
 			Label:    "Incident Status",
-			Type:     configuration.FieldTypeString,
+			Type:     configuration.FieldTypeSelect,
 			Required: false,
+			TypeOptions: &configuration.TypeOptions{
+				Select: &configuration.SelectTypeOptions{
+					Options: []configuration.FieldOption{
+						{Label: "In Triage", Value: "in_triage"},
+						{Label: "Started", Value: "started"},
+						{Label: "Detected", Value: "detected"},
+						{Label: "Acknowledged", Value: "acknowledged"},
+						{Label: "Mitigated", Value: "mitigated"},
+						{Label: "Resolved", Value: "resolved"},
+						{Label: "Closed", Value: "closed"},
+						{Label: "Cancelled", Value: "cancelled"},
+					},
+				},
+			},
 		},
 		{
 			Name:     "severity",
 			Label:    "Severity",
-			Type:     configuration.FieldTypeString,
+			Type:     configuration.FieldTypeIntegrationResource,
 			Required: false,
+			TypeOptions: &configuration.TypeOptions{
+				Resource: &configuration.ResourceTypeOptions{
+					Type: "severity",
+				},
+			},
 		},
 		{
 			Name:     "service",
 			Label:    "Service",
-			Type:     configuration.FieldTypeString,
+			Type:     configuration.FieldTypeIntegrationResource,
 			Required: false,
+			TypeOptions: &configuration.TypeOptions{
+				Resource: &configuration.ResourceTypeOptions{
+					Type: "service",
+				},
+			},
 		},
 		{
 			Name:     "team",
 			Label:    "Team",
-			Type:     configuration.FieldTypeString,
+			Type:     configuration.FieldTypeIntegrationResource,
 			Required: false,
+			TypeOptions: &configuration.TypeOptions{
+				Resource: &configuration.ResourceTypeOptions{
+					Type: "team",
+				},
+			},
 		},
 		{
 			Name:     "eventSource",
@@ -129,8 +158,21 @@ func (t *OnEvent) Configuration() []configuration.Field {
 		{
 			Name:     "eventKind",
 			Label:    "Event Kind",
-			Type:     configuration.FieldTypeString,
+			Type:     configuration.FieldTypeSelect,
 			Required: false,
+			TypeOptions: &configuration.TypeOptions{
+				Select: &configuration.SelectTypeOptions{
+					Options: []configuration.FieldOption{
+						{Label: "Note", Value: "note"},
+						{Label: "Status Change", Value: "status_change"},
+						{Label: "Detection", Value: "detection"},
+						{Label: "Mitigation", Value: "mitigation"},
+						{Label: "Resolution", Value: "resolution"},
+						{Label: "Alert", Value: "alert"},
+						{Label: "Escalation", Value: "escalation"},
+					},
+				},
+			},
 		},
 	}
 }
@@ -187,8 +229,14 @@ func (t *OnEvent) HandleWebhook(ctx core.WebhookRequestContext) (int, error) {
 		return http.StatusOK, nil
 	}
 
+	// Decode integration metadata for resource ID resolution (e.g. severity UUID → slug)
+	var metadata Metadata
+	if ctx.Integration != nil {
+		mapstructure.Decode(ctx.Integration.GetMetadata(), &metadata) //nolint:errcheck
+	}
+
 	// Apply filters
-	if !matchesFilters(webhook.Data, config) {
+	if !matchesFilters(webhook.Data, config, metadata) {
 		return http.StatusOK, nil
 	}
 
@@ -204,7 +252,7 @@ func (t *OnEvent) HandleWebhook(ctx core.WebhookRequestContext) (int, error) {
 	return http.StatusOK, nil
 }
 
-func matchesFilters(data map[string]any, config OnEventConfiguration) bool {
+func matchesFilters(data map[string]any, config OnEventConfiguration, metadata Metadata) bool {
 	// Filter by visibility
 	if config.Visibility != nil {
 		visibility, _ := data["visibility"].(string)
@@ -243,15 +291,28 @@ func matchesFilters(data map[string]any, config OnEventConfiguration) bool {
 		}
 	}
 
-	// Filter by severity
+	// Filter by severity — config value may be a severity slug (direct) or a resource ID
+	// (when selected via the integration resource picker). In the latter case we resolve
+	// the ID to a slug using the cached metadata.
 	if config.Severity != nil {
-		severity := severityString(incident["severity"])
-		if severity != *config.Severity {
+		webhookSeverity := severityString(incident["severity"])
+		configSeverity := *config.Severity
+
+		matched := webhookSeverity == configSeverity
+		if !matched {
+			for _, sev := range metadata.Severities {
+				if sev.ID == configSeverity && (sev.Slug == webhookSeverity || sev.Name == webhookSeverity) {
+					matched = true
+					break
+				}
+			}
+		}
+		if !matched {
 			return false
 		}
 	}
 
-	// Filter by service
+	// Filter by service — config value may be a service name, slug, or resource ID
 	if config.Service != nil {
 		services, ok := incident["services"].([]any)
 		if !ok {
@@ -265,7 +326,8 @@ func matchesFilters(data map[string]any, config OnEventConfiguration) bool {
 			}
 			name, _ := svcMap["name"].(string)
 			slug, _ := svcMap["slug"].(string)
-			if name == *config.Service || slug == *config.Service {
+			id, _ := svcMap["id"].(string)
+			if name == *config.Service || slug == *config.Service || id == *config.Service {
 				found = true
 				break
 			}
@@ -275,7 +337,7 @@ func matchesFilters(data map[string]any, config OnEventConfiguration) bool {
 		}
 	}
 
-	// Filter by team (groups)
+	// Filter by team (groups) — config value may be a team name, slug, or resource ID
 	if config.Team != nil {
 		groups, ok := incident["groups"].([]any)
 		if !ok {
@@ -289,7 +351,8 @@ func matchesFilters(data map[string]any, config OnEventConfiguration) bool {
 			}
 			name, _ := grpMap["name"].(string)
 			slug, _ := grpMap["slug"].(string)
-			if name == *config.Team || slug == *config.Team {
+			id, _ := grpMap["id"].(string)
+			if name == *config.Team || slug == *config.Team || id == *config.Team {
 				found = true
 				break
 			}
