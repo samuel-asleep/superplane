@@ -32,6 +32,7 @@ You are an expert developer for **SuperPlane**, an open source DevOps control pl
 - Use timestamps based on `time.Now()`, never absolute `time.Date` in tests.
 - The product name in user-facing text is **SuperPlane** (capital P), not "Superplane".
 - Avoid unnecessary or obvious inline comments — only comment non-trivial logic.
+- in creation of pr do not tag or refrence any other pr/iussue
 
 ## Component Implementation Rules
 
