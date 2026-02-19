@@ -38,14 +38,12 @@ func Test__OnEvent__Setup(t *testing.T) {
 	})
 
 	t.Run("valid configuration with filters -> webhook request", func(t *testing.T) {
-		visibility := "internal"
-		eventKind := "note"
 		integrationCtx := &contexts.IntegrationContext{}
 		err := trigger.Setup(core.TriggerContext{
 			Integration: integrationCtx,
 			Configuration: OnEventConfiguration{
-				Visibility: &visibility,
-				EventKind:  &eventKind,
+				Visibility: []string{"internal"},
+				EventKind:  []string{"note"},
 			},
 		})
 
@@ -168,9 +166,8 @@ func Test__OnEvent__HandleWebhook(t *testing.T) {
 	})
 
 	t.Run("incident_event.created filtered by visibility -> emitted when matches", func(t *testing.T) {
-		visibility := "internal"
 		config := map[string]any{
-			"visibility": visibility,
+			"visibility": []string{"internal"},
 		}
 
 		body := []byte(`{"event":{"type":"incident_event.created","id":"evt-123","issued_at":"2025-01-01T00:00:00Z"},"data":{"id":"ie-123","event":"Test note","kind":"note","visibility":"internal","occurred_at":"2025-01-01T00:00:00Z","created_at":"2025-01-01T00:00:00Z","user_display_name":"Jane Doe","incident":{"id":"inc-123","title":"Test Incident","status":"started","severity":"sev1","services":[{"id":"svc-1","name":"prod-api","slug":"prod-api"}],"groups":[{"id":"grp-1","name":"platform","slug":"platform"}]}}}`)
@@ -195,9 +192,8 @@ func Test__OnEvent__HandleWebhook(t *testing.T) {
 	})
 
 	t.Run("incident_event.created filtered by visibility -> not emitted when not matching", func(t *testing.T) {
-		visibility := "internal"
 		config := map[string]any{
-			"visibility": visibility,
+			"visibility": []string{"internal"},
 		}
 
 		body := []byte(`{"event":{"type":"incident_event.created","id":"evt-123","issued_at":"2025-01-01T00:00:00Z"},"data":{"id":"ie-123","event":"Test note","kind":"note","visibility":"external","occurred_at":"2025-01-01T00:00:00Z","created_at":"2025-01-01T00:00:00Z","user_display_name":"Jane Doe","incident":{"id":"inc-123","title":"Test Incident","status":"started","severity":"sev1"}}}`)
@@ -222,9 +218,8 @@ func Test__OnEvent__HandleWebhook(t *testing.T) {
 	})
 
 	t.Run("incident_event.created filtered by eventKind -> emitted when matches", func(t *testing.T) {
-		eventKind := "note"
 		config := map[string]any{
-			"eventKind": eventKind,
+			"eventKind": []string{"note"},
 		}
 
 		body := []byte(`{"event":{"type":"incident_event.created","id":"evt-123","issued_at":"2025-01-01T00:00:00Z"},"data":{"id":"ie-123","event":"Test note","kind":"note","visibility":"internal","occurred_at":"2025-01-01T00:00:00Z","created_at":"2025-01-01T00:00:00Z","user_display_name":"Jane Doe","incident":{"id":"inc-123","title":"Test Incident","status":"started","severity":"sev1"}}}`)
@@ -249,9 +244,8 @@ func Test__OnEvent__HandleWebhook(t *testing.T) {
 	})
 
 	t.Run("incident_event.created filtered by eventKind -> not emitted when not matching", func(t *testing.T) {
-		eventKind := "note"
 		config := map[string]any{
-			"eventKind": eventKind,
+			"eventKind": []string{"note"},
 		}
 
 		body := []byte(`{"event":{"type":"incident_event.created","id":"evt-123","issued_at":"2025-01-01T00:00:00Z"},"data":{"id":"ie-123","event":"Test status change","kind":"status_change","visibility":"internal","occurred_at":"2025-01-01T00:00:00Z","created_at":"2025-01-01T00:00:00Z","user_display_name":"Jane Doe","incident":{"id":"inc-123","title":"Test Incident","status":"started","severity":"sev1"}}}`)
@@ -276,9 +270,8 @@ func Test__OnEvent__HandleWebhook(t *testing.T) {
 	})
 
 	t.Run("incident_event.created filtered by incidentStatus -> emitted when matches", func(t *testing.T) {
-		incidentStatus := "started"
 		config := map[string]any{
-			"incidentStatus": incidentStatus,
+			"incidentStatus": []string{"started"},
 		}
 
 		body := []byte(`{"event":{"type":"incident_event.created","id":"evt-123","issued_at":"2025-01-01T00:00:00Z"},"data":{"id":"ie-123","event":"Test note","kind":"note","visibility":"internal","occurred_at":"2025-01-01T00:00:00Z","created_at":"2025-01-01T00:00:00Z","user_display_name":"Jane Doe","incident":{"id":"inc-123","title":"Test Incident","status":"started","severity":"sev1"}}}`)
@@ -303,9 +296,8 @@ func Test__OnEvent__HandleWebhook(t *testing.T) {
 	})
 
 	t.Run("incident_event.created filtered by severity -> emitted when matches", func(t *testing.T) {
-		severity := "sev1"
 		config := map[string]any{
-			"severity": severity,
+			"severity": []string{"sev1"},
 		}
 
 		body := []byte(`{"event":{"type":"incident_event.created","id":"evt-123","issued_at":"2025-01-01T00:00:00Z"},"data":{"id":"ie-123","event":"Test note","kind":"note","visibility":"internal","occurred_at":"2025-01-01T00:00:00Z","created_at":"2025-01-01T00:00:00Z","user_display_name":"Jane Doe","incident":{"id":"inc-123","title":"Test Incident","status":"started","severity":"sev1"}}}`)
@@ -330,9 +322,8 @@ func Test__OnEvent__HandleWebhook(t *testing.T) {
 	})
 
 	t.Run("incident_event.created filtered by service -> emitted when service name matches", func(t *testing.T) {
-		service := "prod-api"
 		config := map[string]any{
-			"service": service,
+			"service": []string{"prod-api"},
 		}
 
 		body := []byte(`{"event":{"type":"incident_event.created","id":"evt-123","issued_at":"2025-01-01T00:00:00Z"},"data":{"id":"ie-123","event":"Test note","kind":"note","visibility":"internal","occurred_at":"2025-01-01T00:00:00Z","created_at":"2025-01-01T00:00:00Z","user_display_name":"Jane Doe","incident":{"id":"inc-123","title":"Test Incident","status":"started","severity":"sev1","services":[{"id":"svc-1","name":"prod-api","slug":"prod-api"}]}}}`)
@@ -357,9 +348,8 @@ func Test__OnEvent__HandleWebhook(t *testing.T) {
 	})
 
 	t.Run("incident_event.created filtered by team -> emitted when team name matches", func(t *testing.T) {
-		team := "platform"
 		config := map[string]any{
-			"team": team,
+			"team": []string{"platform"},
 		}
 
 		body := []byte(`{"event":{"type":"incident_event.created","id":"evt-123","issued_at":"2025-01-01T00:00:00Z"},"data":{"id":"ie-123","event":"Test note","kind":"note","visibility":"internal","occurred_at":"2025-01-01T00:00:00Z","created_at":"2025-01-01T00:00:00Z","user_display_name":"Jane Doe","incident":{"id":"inc-123","title":"Test Incident","status":"started","severity":"sev1","groups":[{"id":"grp-1","name":"platform","slug":"platform"}]}}}`)
@@ -384,9 +374,8 @@ func Test__OnEvent__HandleWebhook(t *testing.T) {
 	})
 
 	t.Run("filtered by service -> emitted when resource ID matches", func(t *testing.T) {
-		service := "svc-1"
 		config := map[string]any{
-			"service": service,
+			"service": []string{"svc-1"},
 		}
 
 		body := []byte(`{"event":{"type":"incident_event.created","id":"evt-123","issued_at":"2025-01-01T00:00:00Z"},"data":{"id":"ie-123","event":"Test note","kind":"note","visibility":"internal","occurred_at":"2025-01-01T00:00:00Z","created_at":"2025-01-01T00:00:00Z","user_display_name":"Jane Doe","incident":{"id":"inc-123","title":"Test Incident","status":"started","severity":"sev1","services":[{"id":"svc-1","name":"prod-api","slug":"prod-api"}]}}}`)
@@ -411,9 +400,8 @@ func Test__OnEvent__HandleWebhook(t *testing.T) {
 	})
 
 	t.Run("filtered by team -> emitted when resource ID matches", func(t *testing.T) {
-		team := "grp-1"
 		config := map[string]any{
-			"team": team,
+			"team": []string{"grp-1"},
 		}
 
 		body := []byte(`{"event":{"type":"incident_event.created","id":"evt-123","issued_at":"2025-01-01T00:00:00Z"},"data":{"id":"ie-123","event":"Test note","kind":"note","visibility":"internal","occurred_at":"2025-01-01T00:00:00Z","created_at":"2025-01-01T00:00:00Z","user_display_name":"Jane Doe","incident":{"id":"inc-123","title":"Test Incident","status":"started","severity":"sev1","groups":[{"id":"grp-1","name":"platform","slug":"platform"}]}}}`)
@@ -438,9 +426,8 @@ func Test__OnEvent__HandleWebhook(t *testing.T) {
 	})
 
 	t.Run("filtered by severity -> emitted when resource ID matches via metadata", func(t *testing.T) {
-		severity := "sev-uuid-123"
 		config := map[string]any{
-			"severity": severity,
+			"severity": []string{"sev-uuid-123"},
 		}
 
 		body := []byte(`{"event":{"type":"incident_event.created","id":"evt-123","issued_at":"2025-01-01T00:00:00Z"},"data":{"id":"ie-123","event":"Test note","kind":"note","visibility":"internal","occurred_at":"2025-01-01T00:00:00Z","created_at":"2025-01-01T00:00:00Z","user_display_name":"Jane Doe","incident":{"id":"inc-123","title":"Test Incident","status":"started","severity":"sev1"}}}`)
@@ -474,9 +461,8 @@ func Test__OnEvent__HandleWebhook(t *testing.T) {
 	})
 
 	t.Run("filtered by severity -> not emitted when resource ID does not match", func(t *testing.T) {
-		severity := "sev-uuid-456"
 		config := map[string]any{
-			"severity": severity,
+			"severity": []string{"sev-uuid-456"},
 		}
 
 		body := []byte(`{"event":{"type":"incident_event.created","id":"evt-123","issued_at":"2025-01-01T00:00:00Z"},"data":{"id":"ie-123","event":"Test note","kind":"note","visibility":"internal","occurred_at":"2025-01-01T00:00:00Z","created_at":"2025-01-01T00:00:00Z","user_display_name":"Jane Doe","incident":{"id":"inc-123","title":"Test Incident","status":"started","severity":"sev1"}}}`)
@@ -507,5 +493,57 @@ func Test__OnEvent__HandleWebhook(t *testing.T) {
 		require.Equal(t, http.StatusOK, code)
 		require.NoError(t, err)
 		require.Equal(t, 0, eventContext.Count())
+	})
+
+	t.Run("multi-select eventKind -> emitted when event matches any selected kind", func(t *testing.T) {
+		config := map[string]any{
+			"eventKind": []string{"note", "status_change"},
+		}
+
+		body := []byte(`{"event":{"type":"incident_event.created","id":"evt-123","issued_at":"2025-01-01T00:00:00Z"},"data":{"id":"ie-123","event":"Status changed","kind":"status_change","visibility":"internal","occurred_at":"2025-01-01T00:00:00Z","created_at":"2025-01-01T00:00:00Z","user_display_name":"Jane Doe","incident":{"id":"inc-123","title":"Test Incident","status":"started","severity":"sev1"}}}`)
+		secret := "test-secret"
+		timestamp := "1234567890"
+
+		headers := http.Header{}
+		headers.Set("X-Rootly-Signature", signatureFor(secret, timestamp, body))
+
+		eventContext := &contexts.EventContext{}
+		code, err := trigger.HandleWebhook(core.WebhookRequestContext{
+			Body:          body,
+			Headers:       headers,
+			Configuration: config,
+			Webhook:       &contexts.WebhookContext{Secret: secret},
+			Events:        eventContext,
+		})
+
+		require.Equal(t, http.StatusOK, code)
+		require.NoError(t, err)
+		require.Equal(t, 1, eventContext.Count())
+	})
+
+	t.Run("multi-select service -> emitted when incident service matches any selected service", func(t *testing.T) {
+		config := map[string]any{
+			"service": []string{"other-service", "prod-api"},
+		}
+
+		body := []byte(`{"event":{"type":"incident_event.created","id":"evt-123","issued_at":"2025-01-01T00:00:00Z"},"data":{"id":"ie-123","event":"Test note","kind":"note","visibility":"internal","occurred_at":"2025-01-01T00:00:00Z","created_at":"2025-01-01T00:00:00Z","user_display_name":"Jane Doe","incident":{"id":"inc-123","title":"Test Incident","status":"started","severity":"sev1","services":[{"id":"svc-1","name":"prod-api","slug":"prod-api"}]}}}`)
+		secret := "test-secret"
+		timestamp := "1234567890"
+
+		headers := http.Header{}
+		headers.Set("X-Rootly-Signature", signatureFor(secret, timestamp, body))
+
+		eventContext := &contexts.EventContext{}
+		code, err := trigger.HandleWebhook(core.WebhookRequestContext{
+			Body:          body,
+			Headers:       headers,
+			Configuration: config,
+			Webhook:       &contexts.WebhookContext{Secret: secret},
+			Events:        eventContext,
+		})
+
+		require.Equal(t, http.StatusOK, code)
+		require.NoError(t, err)
+		require.Equal(t, 1, eventContext.Count())
 	})
 }
