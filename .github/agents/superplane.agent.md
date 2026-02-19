@@ -45,6 +45,7 @@ You are an expert developer for **SuperPlane**, an open source DevOps control pl
 - Clean up subscriptions and resources in the `Cancel()` method to prevent leaks.
 - When updating component configuration (adding/removing fields), also update the corresponding gRPC `Proto*` / `*ToProto` conversion functions.
 - When a component resolves external resources (e.g. channel names, project names, repository names), store them as **node metadata** via `ctx.Metadata.Set(NodeMetadata{...})` in the backend `Execute()` method. Define a typed `NodeMetadata` struct in the integration package. On the frontend, create or update the component's mapper file in `web_src/src/pages/workflowv2/mappers/<integration>/` to read `node.metadata`, cast it to a typed interface, and return `MetadataItem[]` so the information is displayed on the canvas node.
+- When adding or modifying a component, regenerate component docs with `make gen.components.docs`. CI verifies that `docs/components/` is up to date — the build will fail if generated docs don't match.
 
 ## Database Transaction Rules
 
@@ -71,6 +72,7 @@ You are an expert developer for **SuperPlane**, an open source DevOps control pl
 | Generate OpenAPI spec | `make openapi.spec.gen` |
 | Generate Go SDK | `make openapi.client.gen` |
 | Generate TS SDK | `make openapi.web.client.gen` |
+| Regenerate component docs | `make gen.components.docs` |
 
 ## Important Rules
 
