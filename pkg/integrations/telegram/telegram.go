@@ -84,7 +84,7 @@ func (t *Telegram) Components() []core.Component {
 
 func (t *Telegram) Triggers() []core.Trigger {
 	return []core.Trigger{
-		&OnMessageReceived{},
+		&OnMention{},
 	}
 }
 
@@ -151,6 +151,19 @@ func (t *Telegram) HandleRequest(ctx core.HTTPRequestContext) {
 		return
 	}
 
+	// Only dispatch messages where the bot is mentioned.
+	metadata := Metadata{}
+	if err := mapstructure.Decode(ctx.Integration.GetMetadata(), &metadata); err != nil {
+		ctx.Logger.Errorf("telegram: failed to decode metadata: %v", err)
+		ctx.Response.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	if !isBotMentioned(update.Message, metadata) {
+		ctx.Response.WriteHeader(http.StatusOK)
+		return
+	}
+
 	subscriptions, err := ctx.Integration.ListSubscriptions()
 	if err != nil {
 		ctx.Logger.Errorf("telegram: failed to list subscriptions: %v", err)
@@ -165,7 +178,7 @@ func (t *Telegram) HandleRequest(ctx core.HTTPRequestContext) {
 			continue
 		}
 
-		if !slices.Contains(c.EventTypes, "message.received") {
+		if !slices.Contains(c.EventTypes, "mention") {
 			continue
 		}
 
@@ -175,6 +188,31 @@ func (t *Telegram) HandleRequest(ctx core.HTTPRequestContext) {
 	}
 
 	ctx.Response.WriteHeader(http.StatusOK)
+}
+
+// isBotMentioned checks if the bot is @mentioned in the message.
+// It checks for "mention" entities (where the text contains @username)
+// and "text_mention" entities (where the user is referenced without a username).
+func isBotMentioned(msg *TelegramMessage, metadata Metadata) bool {
+	for _, entity := range msg.Entities {
+		switch entity.Type {
+		case "mention":
+			// Extract the @username from the message text.
+			if metadata.Username != "" && entity.Offset+entity.Length <= len(msg.Text) {
+				mentioned := msg.Text[entity.Offset : entity.Offset+entity.Length]
+				if mentioned == "@"+metadata.Username {
+					return true
+				}
+			}
+		case "text_mention":
+			// text_mention includes a User object for users without usernames.
+			if entity.User != nil && entity.User.ID == metadata.BotID {
+				return true
+			}
+		}
+	}
+
+	return false
 }
 
 func (t *Telegram) Cleanup(ctx core.IntegrationCleanupContext) error {

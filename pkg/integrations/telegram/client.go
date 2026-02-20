@@ -74,11 +74,11 @@ type TelegramUpdate struct {
 
 // TelegramMessage represents a Telegram message
 type TelegramMessage struct {
-	MessageID int            `json:"message_id"`
-	From      *TelegramUser  `json:"from,omitempty"`
-	Chat      TelegramChat   `json:"chat"`
-	Text      string         `json:"text,omitempty"`
-	Date      int64          `json:"date"`
+	MessageID int             `json:"message_id"`
+	From      *TelegramUser   `json:"from,omitempty"`
+	Chat      TelegramChat    `json:"chat"`
+	Text      string          `json:"text,omitempty"`
+	Date      int64           `json:"date"`
 	Entities  []MessageEntity `json:"entities,omitempty"`
 }
 
@@ -99,9 +99,10 @@ type TelegramChat struct {
 
 // MessageEntity represents a special entity in a message (e.g. mention, command)
 type MessageEntity struct {
-	Type   string `json:"type"`
-	Offset int    `json:"offset"`
-	Length int    `json:"length"`
+	Type   string        `json:"type"`
+	Offset int           `json:"offset"`
+	Length int           `json:"length"`
+	User   *TelegramUser `json:"user,omitempty"`
 }
 
 // setWebhookRequest is the request body for setWebhook

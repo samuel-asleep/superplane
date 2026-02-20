@@ -1,5 +1,5 @@
 {
-  "type": "telegram.message.received",
+  "type": "telegram.mention",
   "data": {
     "message_id": 42,
     "from": {

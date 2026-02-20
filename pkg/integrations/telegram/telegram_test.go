@@ -160,16 +160,18 @@ func Test__Telegram__HandleRequest(t *testing.T) {
 				"message_id": 10,
 				"chat": {"id": -100, "type": "group", "title": "Test"},
 				"text": "@mybot hello",
-				"date": 1737028800
+				"date": 1737028800,
+				"entities": [{"type": "mention", "offset": 0, "length": 6}]
 			}
 		}`
 		req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(body))
 		rw := httptest.NewRecorder()
 
-		sub := &mockSubscription{config: SubscriptionConfiguration{EventTypes: []string{"message.received"}}}
+		sub := &mockSubscription{config: SubscriptionConfiguration{EventTypes: []string{"mention"}}}
 		integrationCtx := &contexts.IntegrationContext{
+			Metadata: Metadata{BotID: 123, Username: "mybot"},
 			Subscriptions: []contexts.Subscription{
-				{Configuration: SubscriptionConfiguration{EventTypes: []string{"message.received"}}},
+				{Configuration: SubscriptionConfiguration{EventTypes: []string{"mention"}}},
 			},
 		}
 		_ = sub
@@ -184,4 +186,3 @@ func Test__Telegram__HandleRequest(t *testing.T) {
 		assert.Equal(t, http.StatusOK, rw.Code)
 	})
 }
-
