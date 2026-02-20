@@ -34,6 +34,7 @@ export interface ChainItemData {
   nodeDisplayName?: string; // The actual display name from workflow node
   nodeIcon?: string;
   nodeIconSlug?: string; // Icon slug from component/trigger/blueprint metadata
+  nodeIconSrc?: string; // Custom SVG icon source for integrations
   state?: string; // Make state optional since it will be calculated
   executionId?: string;
   originalExecution?: CanvasesCanvasNodeExecution; // Add execution data
@@ -276,8 +277,7 @@ export const ChainItem: React.FC<ChainItemProps> = ({
       <div
         key={item.id + index}
         className={
-          `cursor-pointer p-2 relative rounded-md border-1 border-slate-950/20 ${
-            isSelected ? "ring-[3px] ring-sky-300 ring-offset-3" : ""
+          `cursor-pointer p-2 relative rounded-md border-1 border-slate-950/20 ${isSelected ? "ring-[3px] ring-sky-300 ring-offset-3" : ""
           } ${EventBackground}` + (showConnectingLine ? " mb-3" : "")
         }
         onClick={(e) => {
@@ -289,12 +289,16 @@ export const ChainItem: React.FC<ChainItemProps> = ({
         <div className="flex items-center justify-between gap-2 min-w-0 flex-1">
           <div className="flex items-center gap-2 min-w-0 flex-1">
             {/* Component Icon */}
-            {(item.nodeIconSlug || item.nodeIcon) && (
+            {(item.nodeIconSrc || item.nodeIconSlug || item.nodeIcon) && (
               <div className="flex-shrink-0 w-4 h-4 flex items-center justify-center">
-                {React.createElement(resolveIcon(item.nodeIconSlug || item.nodeIcon), {
-                  size: 16,
-                  className: "text-gray-800",
-                })}
+                {item.nodeIconSrc ? (
+                  <img src={item.nodeIconSrc} alt="" className="h-4 w-4 shrink-0 object-contain" />
+                ) : (
+                  React.createElement(resolveIcon(item.nodeIconSlug || item.nodeIcon), {
+                    size: 16,
+                    className: "text-gray-800",
+                  })
+                )}
               </div>
             )}
             <span className="text-sm text-gray-800 truncate min-w-0 font-semibold">
@@ -325,7 +329,7 @@ export const ChainItem: React.FC<ChainItemProps> = ({
                     Duration:{" "}
                     {calcRelativeTimeFromDiff(
                       new Date(item.originalExecution.updatedAt).getTime() -
-                        new Date(item.originalExecution.createdAt).getTime(),
+                      new Date(item.originalExecution.createdAt).getTime(),
                     )}
                   </span>
                 </>
@@ -365,9 +369,8 @@ export const ChainItem: React.FC<ChainItemProps> = ({
                   <span className="text-sm text-gray-500 truncate flex-1">{child.name}</span>
                 </div>
                 <div
-                  className={`capitalize text-xs py-[1px] px-[3px] rounded flex items-center justify-center flex-shrink-0 ${
-                    child.badgeColor?.replace("bg", "text") || "bg-gray-400"
-                  }`}
+                  className={`capitalize text-xs py-[1px] px-[3px] rounded flex items-center justify-center flex-shrink-0 ${child.badgeColor?.replace("bg", "text") || "bg-gray-400"
+                    }`}
                 >
                   <span>{child.state}</span>
                 </div>
@@ -388,11 +391,10 @@ export const ChainItem: React.FC<ChainItemProps> = ({
                 {item.tabData.current && (
                   <button
                     onClick={() => setActiveTab("current")}
-                    className={`py-1.5 ml-4 text-[13px] font-medium rounded-tr-md flex items-center border-b-1 gap-1  ${
-                      activeTab === "current"
+                    className={`py-1.5 ml-4 text-[13px] font-medium rounded-tr-md flex items-center border-b-1 gap-1  ${activeTab === "current"
                         ? "text-gray-800 border-b-1 border-gray-800"
                         : "text-gray-500 hover:text-gray-800"
-                    }`}
+                      }`}
                   >
                     {React.createElement(resolveIcon("Croissant"), { size: 16 })}
                     Details
@@ -402,11 +404,10 @@ export const ChainItem: React.FC<ChainItemProps> = ({
               {item.tabData.payload && (
                 <button
                   onClick={() => setActiveTab("payload")}
-                  className={`py-1.5 ml-4 text-[13px] font-medium rounded-tr-md flex items-center border-b-1 gap-1 ${
-                    activeTab === "payload"
+                  className={`py-1.5 ml-4 text-[13px] font-medium rounded-tr-md flex items-center border-b-1 gap-1 ${activeTab === "payload"
                       ? "text-gray-800 border-b-1 border-gray-800"
                       : "text-gray-500 hover:text-gray-800"
-                  }`}
+                    }`}
                 >
                   {React.createElement(resolveIcon("code"), { size: 16 })}
                   Payload
@@ -493,11 +494,10 @@ export const ChainItem: React.FC<ChainItemProps> = ({
                                 <div className="flex items-start gap-2">
                                   {/* Status badge replaces the dot */}
                                   <span
-                                    className={`text-xs font-medium px-1 py-0.5 rounded flex-shrink-0 uppercase leading-tight self-start ${
-                                      issue.status === "critical"
+                                    className={`text-xs font-medium px-1 py-0.5 rounded flex-shrink-0 uppercase leading-tight self-start ${issue.status === "critical"
                                         ? "bg-red-100 text-red-700"
                                         : "bg-yellow-100 text-yellow-700"
-                                    }`}
+                                      }`}
                                   >
                                     {issue.status}
                                   </span>

@@ -14,6 +14,7 @@ import {
 import { EventState, EventStateMap } from "../../componentBase";
 import { ChildExecution } from "@/ui/chainItem/ChainItem";
 import { getExecutionDetails } from "@/pages/workflowv2/mappers";
+import { getHeaderIconSrc } from "../integrationIcons";
 
 function buildExecutionTabData(
   execution: CanvasesCanvasNodeExecution,
@@ -107,6 +108,10 @@ function convertSidebarEventToChainItem(
     }
   }
 
+  // Resolve custom SVG icon from component/trigger name
+  const triggerName = workflowNode?.trigger?.name;
+  const nodeIconSrc = getHeaderIconSrc(triggerName);
+
   return {
     id: triggerEvent.id,
     nodeId: triggerEvent.nodeId || "",
@@ -115,6 +120,7 @@ function convertSidebarEventToChainItem(
     nodeDisplayName,
     nodeIcon: "play",
     nodeIconSlug,
+    nodeIconSrc,
     state: triggerEvent.state || "neutral",
     executionId: undefined, // Trigger events don't have execution IDs
     originalExecution: undefined,
@@ -307,6 +313,10 @@ export const ExecutionChainPage: React.FC<ExecutionChainPageProps> = ({
             });
         }
 
+        // Resolve custom SVG icon from component/trigger name
+        const componentOrTriggerName = workflowNode?.component?.name || workflowNode?.trigger?.name;
+        const nodeIconSrc = getHeaderIconSrc(componentOrTriggerName);
+
         return {
           id: exec.id || `execution-${index}`,
           nodeId: exec.nodeId || "",
@@ -315,6 +325,7 @@ export const ExecutionChainPage: React.FC<ExecutionChainPageProps> = ({
           nodeDisplayName,
           nodeIcon: exec.nodeIcon || "box",
           nodeIconSlug,
+          nodeIconSrc,
           state: exec.state || "neutral",
           executionId: exec.id,
           originalExecution: exec, // Pass the full execution data
