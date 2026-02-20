@@ -99,6 +99,11 @@ import {
   eventStateRegistry as discordEventStateRegistry,
 } from "./discord";
 import {
+  componentMappers as telegramComponentMappers,
+  triggerRenderers as telegramTriggerRenderers,
+  eventStateRegistry as telegramEventStateRegistry,
+} from "./telegram";
+import {
   componentMappers as openaiComponentMappers,
   triggerRenderers as openaiTriggerRenderers,
   eventStateRegistry as openaiEventStateRegistry,
@@ -190,6 +195,7 @@ const appMappers: Record<string, Record<string, ComponentBaseMapper>> = {
   rootly: rootlyComponentMappers,
   aws: awsComponentMappers,
   discord: discordComponentMappers,
+  telegram: telegramComponentMappers,
   openai: openaiComponentMappers,
   circleci: circleCIComponentMappers,
   claude: claudeComponentMappers,
@@ -217,6 +223,7 @@ const appTriggerRenderers: Record<string, Record<string, TriggerRenderer>> = {
   rootly: rootlyTriggerRenderers,
   aws: awsTriggerRenderers,
   discord: discordTriggerRenderers,
+  telegram: telegramTriggerRenderers,
   openai: openaiTriggerRenderers,
   circleci: circleCITriggerRenderers,
   claude: claudeTriggerRenderers,
@@ -242,6 +249,7 @@ const appEventStateRegistries: Record<string, Record<string, EventStateRegistry>
   sendgrid: sendgridEventStateRegistry,
   render: renderEventStateRegistry,
   discord: discordEventStateRegistry,
+  telegram: telegramEventStateRegistry,
   rootly: rootlyEventStateRegistry,
   openai: openaiEventStateRegistry,
   circleci: circleCIEventStateRegistry,
