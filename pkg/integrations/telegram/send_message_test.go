@@ -45,6 +45,16 @@ func Test__SendMessage__Setup(t *testing.T) {
 		require.ErrorContains(t, err, "text is required")
 	})
 
+	t.Run("invalid parse mode -> error", func(t *testing.T) {
+		err := component.Setup(core.SetupContext{
+			Integration:   &contexts.IntegrationContext{},
+			Metadata:      &contexts.MetadataContext{},
+			Configuration: map[string]any{"chatId": "123456789", "text": "Hi", "parseMode": "HTML"},
+		})
+
+		require.ErrorContains(t, err, "invalid parseMode")
+	})
+
 	t.Run("valid configuration -> stores metadata", func(t *testing.T) {
 		metadata := &contexts.MetadataContext{}
 

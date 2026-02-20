@@ -48,7 +48,7 @@ func (c *SendMessage) Documentation() string {
 
 - **Chat ID**: The Telegram chat ID (can be a user, group, or channel)
 - **Text**: The message text to send
-- **Parse Mode**: Optional formatting mode (HTML, Markdown, or MarkdownV2)
+- **Parse Mode**: Optional formatting mode (Markdown)
 
 ## Output
 
@@ -93,9 +93,17 @@ func (c *SendMessage) Configuration() []configuration.Field {
 		{
 			Name:        "parseMode",
 			Label:       "Parse Mode",
-			Type:        configuration.FieldTypeString,
+			Type:        configuration.FieldTypeSelect,
 			Required:    false,
-			Description: "Message formatting: HTML, Markdown, or MarkdownV2",
+			Description: "Message formatting mode",
+			TypeOptions: &configuration.TypeOptions{
+				Select: &configuration.SelectTypeOptions{
+					Options: []configuration.FieldOption{
+						{Label: "None", Value: ""},
+						{Label: "Markdown", Value: "Markdown"},
+					},
+				},
+			},
 		},
 	}
 }
@@ -112,6 +120,10 @@ func (c *SendMessage) Setup(ctx core.SetupContext) error {
 
 	if config.Text == "" {
 		return errors.New("text is required")
+	}
+
+	if config.ParseMode != "" && config.ParseMode != "Markdown" {
+		return fmt.Errorf("invalid parseMode %q: must be Markdown", config.ParseMode)
 	}
 
 	metadata := SendMessageMetadata{
