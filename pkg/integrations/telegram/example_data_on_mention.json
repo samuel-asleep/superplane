@@ -15,9 +15,12 @@
     },
     "text": "@mybot hello!",
     "entities": [
-      { "type": "mention", "offset": 0, "length": 6 }
+      {
+        "type": "mention",
+        "offset": 0,
+        "length": 6
+      }
     ],
     "date": 1737028800
-  },
-  "timestamp": "2026-01-16T12:00:00Z"
+  }
 }
