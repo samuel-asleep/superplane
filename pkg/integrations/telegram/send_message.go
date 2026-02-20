@@ -99,7 +99,7 @@ func (c *SendMessage) Configuration() []configuration.Field {
 			TypeOptions: &configuration.TypeOptions{
 				Select: &configuration.SelectTypeOptions{
 					Options: []configuration.FieldOption{
-						{Label: "None", Value: ""},
+						{Label: "None", Value: "none"},
 						{Label: "Markdown", Value: "Markdown"},
 					},
 				},
@@ -122,8 +122,8 @@ func (c *SendMessage) Setup(ctx core.SetupContext) error {
 		return errors.New("text is required")
 	}
 
-	if config.ParseMode != "" && config.ParseMode != "Markdown" {
-		return fmt.Errorf("invalid parseMode %q: must be Markdown", config.ParseMode)
+	if config.ParseMode != "" && config.ParseMode != "none" && config.ParseMode != "Markdown" {
+		return fmt.Errorf("invalid parseMode %q: must be none or Markdown", config.ParseMode)
 	}
 
 	metadata := SendMessageMetadata{
@@ -156,7 +156,12 @@ func (c *SendMessage) Execute(ctx core.ExecutionContext) error {
 		return fmt.Errorf("failed to create Telegram client: %w", err)
 	}
 
-	response, err := client.SendMessage(config.ChatID, config.Text, config.ParseMode)
+	parseMode := config.ParseMode
+	if parseMode == "none" {
+		parseMode = ""
+	}
+
+	response, err := client.SendMessage(config.ChatID, config.Text, parseMode)
 	if err != nil {
 		return fmt.Errorf("failed to send message: %w", err)
 	}

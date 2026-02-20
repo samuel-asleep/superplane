@@ -4,7 +4,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"slices"
+	"strings"
 
+	"github.com/mitchellh/mapstructure"
 	"github.com/superplanehq/superplane/pkg/configuration"
 	"github.com/superplanehq/superplane/pkg/core"
 	"github.com/superplanehq/superplane/pkg/registry"
@@ -177,7 +180,7 @@ func (t *Telegram) HandleRequest(ctx core.HTTPRequestContext) {
 		if entity.Type == "mention" {
 			// Extract the mentioned username from the message text
 			mentionedText := update.Message.Text[entity.Offset : entity.Offset+entity.Length]
-			if mentionedText == botUsername {
+			if strings.EqualFold(mentionedText, botUsername) {
 				isMention = true
 				break
 			}
@@ -199,29 +202,14 @@ func (t *Telegram) HandleRequest(ctx core.HTTPRequestContext) {
 
 	for _, subscription := range subscriptions {
 		config := SubscriptionConfiguration{}
-		if subscription.Configuration() != nil {
-			configMap, ok := subscription.Configuration().(map[string]any)
-			if ok {
-				if eventTypes, ok := configMap["eventTypes"].([]any); ok {
-					for _, et := range eventTypes {
-						if etStr, ok := et.(string); ok {
-							config.EventTypes = append(config.EventTypes, etStr)
-						}
-					}
-				}
-			}
+		if err := mapstructure.Decode(subscription.Configuration(), &config); err != nil {
+			ctx.Logger.Errorf("error decoding subscription configuration: %v", err)
+			continue
 		}
 
-		// Check if subscription is interested in message_mention events
-		hasMessageMention := false
-		for _, et := range config.EventTypes {
-			if et == "message_mention" {
-				hasMessageMention = true
-				break
-			}
-		}
-
-		if !hasMessageMention {
+		if !slices.ContainsFunc(config.EventTypes, func(t string) bool {
+			return t == "message_mention"
+		}) {
 			continue
 		}
 
