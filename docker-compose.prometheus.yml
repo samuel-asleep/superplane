@@ -2,7 +2,7 @@ services:
   prometheus:
     image: prom/prometheus:latest
     ports:
-      - "9090:9090"
+      - "4400:9090"
     volumes:
       - ./prometheus-test/prometheus.yml:/etc/prometheus/prometheus.yml
       - ./prometheus-test/alert_rules.yml:/etc/prometheus/alert_rules.yml
