@@ -14,12 +14,13 @@ import (
 const MaxResponseSize = 1 * 1024 * 1024 // 1MB
 
 type Client struct {
-	baseURL     string
-	authType    string
-	username    string
-	password    string
-	bearerToken string
-	http        core.HTTPContext
+	baseURL         string
+	alertmanagerURL string
+	authType        string
+	username        string
+	password        string
+	bearerToken     string
+	http            core.HTTPContext
 }
 
 type prometheusResponse[T any] struct {
@@ -71,10 +72,13 @@ func NewClient(httpContext core.HTTPContext, integration core.IntegrationContext
 		return nil, err
 	}
 
+	alertmanagerURL := optionalConfig(integration, "alertmanagerURL")
+
 	client := &Client{
-		baseURL:  normalizeBaseURL(baseURL),
-		authType: authType,
-		http:     httpContext,
+		baseURL:         normalizeBaseURL(baseURL),
+		alertmanagerURL: normalizeBaseURL(alertmanagerURL),
+		authType:        authType,
+		http:            httpContext,
 	}
 
 	switch authType {
@@ -104,6 +108,14 @@ func NewClient(httpContext core.HTTPContext, integration core.IntegrationContext
 	default:
 		return nil, fmt.Errorf("invalid authType %q", authType)
 	}
+}
+
+func optionalConfig(ctx core.IntegrationContext, name string) string {
+	value, err := ctx.GetConfig(name)
+	if err != nil {
+		return ""
+	}
+	return string(value)
 }
 
 func requiredConfig(ctx core.IntegrationContext, name string) (string, error) {
@@ -169,13 +181,21 @@ func (c *Client) Query(query string) (map[string]any, error) {
 	return response.Data, nil
 }
 
+func (c *Client) alertmanagerBaseURL() string {
+	if c.alertmanagerURL != "" {
+		return c.alertmanagerURL
+	}
+	return c.baseURL
+}
+
 func (c *Client) CreateSilence(silence SilencePayload) (string, error) {
 	jsonBody, err := json.Marshal(silence)
 	if err != nil {
 		return "", fmt.Errorf("failed to marshal silence payload: %w", err)
 	}
 
-	body, err := c.execRequestWithBody(http.MethodPost, "/api/v2/silences", strings.NewReader(string(jsonBody)))
+	apiURL := c.alertmanagerBaseURL() + "/api/v2/silences"
+	body, err := c.execRequestWithBodyAndURL(http.MethodPost, apiURL, strings.NewReader(string(jsonBody)))
 	if err != nil {
 		return "", err
 	}
@@ -189,13 +209,30 @@ func (c *Client) CreateSilence(silence SilencePayload) (string, error) {
 }
 
 func (c *Client) ExpireSilence(silenceID string) error {
-	apiPath := fmt.Sprintf("/api/v2/silence/%s", silenceID)
-	_, err := c.execRequest(http.MethodDelete, apiPath)
+	apiURL := fmt.Sprintf("%s/api/v2/silence/%s", c.alertmanagerBaseURL(), silenceID)
+	_, err := c.execRequestWithBodyAndURL(http.MethodDelete, apiURL, nil)
 	return err
 }
 
 func (c *Client) execRequest(method string, path string) ([]byte, error) {
 	return c.execRequestWithBody(method, path, nil)
+}
+
+func (c *Client) execRequestWithBodyAndURL(method string, fullURL string, body io.Reader) ([]byte, error) {
+	req, err := http.NewRequest(method, fullURL, body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+
+	req.Header.Set("Accept", "application/json")
+	if body != nil {
+		req.Header.Set("Content-Type", "application/json")
+	}
+	if err := c.setAuth(req); err != nil {
+		return nil, err
+	}
+
+	return c.doRequest(req)
 }
 
 func (c *Client) execRequestWithBody(method string, path string, body io.Reader) ([]byte, error) {
@@ -219,6 +256,10 @@ func (c *Client) execRequestWithBody(method string, path string, body io.Reader)
 		return nil, err
 	}
 
+	return c.doRequest(req)
+}
+
+func (c *Client) doRequest(req *http.Request) ([]byte, error) {
 	res, err := c.http.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("failed to execute request: %w", err)
