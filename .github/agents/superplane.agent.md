@@ -47,6 +47,14 @@ You are an expert developer for **SuperPlane**, an open source DevOps control pl
 - When a component resolves external resources (e.g. channel names, project names, repository names), store them as **node metadata** via `ctx.Metadata.Set(NodeMetadata{...})` in the backend `Execute()` method. Define a typed `NodeMetadata` struct in the integration package. On the frontend, create or update the component's mapper file in `web_src/src/pages/workflowv2/mappers/<integration>/` to read `node.metadata`, cast it to a typed interface, and return `MetadataItem[]` so the information is displayed on the canvas node.
 - When adding or modifying a component, regenerate component docs with `make gen.components.docs`. CI verifies that `docs/components/` is up to date — the build will fail if generated docs don't match.
 
+## Field Value Selection Rules
+
+When a configuration field's value comes from a **known set of options**, always use a dropdown-based field type instead of a free-text input:
+
+- **Static values** (options known at definition time): use `select` (single choice) or `multi-select` (multiple choices) with `SelectTypeOptions` / `MultiSelectTypeOptions` containing the predefined `FieldOption` list.
+- **Dynamic values** (options fetched at runtime from an integration): use `integration-resource` with `ResourceTypeOptions`. Set `Multi: true` when the user should be able to pick more than one resource.
+- **Prefer multiselect by default**: if the field semantically allows selecting more than one item, use `multi-select` (static) or `integration-resource` with `Multi: true` (dynamic). Only fall back to single-select when exactly one value is required.
+
 ## Database Transaction Rules
 
 - **Never** call `database.Conn()` inside a function that receives `tx *gorm.DB`.
