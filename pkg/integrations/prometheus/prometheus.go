@@ -141,6 +141,8 @@ func (p *Prometheus) Configuration() []configuration.Field {
 func (p *Prometheus) Components() []core.Component {
 	return []core.Component{
 		&GetAlert{},
+		&CreateSilence{},
+		&ExpireSilence{},
 	}
 }
 

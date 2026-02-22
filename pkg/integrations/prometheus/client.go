@@ -41,6 +41,25 @@ type PrometheusAlert struct {
 	Value       string            `json:"value,omitempty"`
 }
 
+type Matcher struct {
+	Name    string `json:"name"`
+	Value   string `json:"value"`
+	IsRegex bool   `json:"isRegex"`
+	IsEqual bool   `json:"isEqual"`
+}
+
+type SilencePayload struct {
+	Matchers  []Matcher `json:"matchers"`
+	StartsAt  string    `json:"startsAt"`
+	EndsAt    string    `json:"endsAt"`
+	CreatedBy string    `json:"createdBy"`
+	Comment   string    `json:"comment"`
+}
+
+type silenceResponse struct {
+	SilenceID string `json:"silenceID"`
+}
+
 func NewClient(httpContext core.HTTPContext, integration core.IntegrationContext) (*Client, error) {
 	baseURL, err := requiredConfig(integration, "baseURL")
 	if err != nil {
@@ -150,7 +169,36 @@ func (c *Client) Query(query string) (map[string]any, error) {
 	return response.Data, nil
 }
 
+func (c *Client) CreateSilence(silence SilencePayload) (string, error) {
+	jsonBody, err := json.Marshal(silence)
+	if err != nil {
+		return "", fmt.Errorf("failed to marshal silence payload: %w", err)
+	}
+
+	body, err := c.execRequestWithBody(http.MethodPost, "/api/v2/silences", strings.NewReader(string(jsonBody)))
+	if err != nil {
+		return "", err
+	}
+
+	response := silenceResponse{}
+	if err := decodeResponse(body, &response); err != nil {
+		return "", err
+	}
+
+	return response.SilenceID, nil
+}
+
+func (c *Client) ExpireSilence(silenceID string) error {
+	apiPath := fmt.Sprintf("/api/v2/silence/%s", silenceID)
+	_, err := c.execRequest(http.MethodDelete, apiPath)
+	return err
+}
+
 func (c *Client) execRequest(method string, path string) ([]byte, error) {
+	return c.execRequestWithBody(method, path, nil)
+}
+
+func (c *Client) execRequestWithBody(method string, path string, body io.Reader) ([]byte, error) {
 	apiURL := c.baseURL
 	if strings.HasPrefix(path, "/") {
 		apiURL += path
@@ -158,12 +206,15 @@ func (c *Client) execRequest(method string, path string) ([]byte, error) {
 		apiURL += "/" + path
 	}
 
-	req, err := http.NewRequest(method, apiURL, nil)
+	req, err := http.NewRequest(method, apiURL, body)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
 
 	req.Header.Set("Accept", "application/json")
+	if body != nil {
+		req.Header.Set("Content-Type", "application/json")
+	}
 	if err := c.setAuth(req); err != nil {
 		return nil, err
 	}
@@ -175,20 +226,20 @@ func (c *Client) execRequest(method string, path string) ([]byte, error) {
 	defer res.Body.Close()
 
 	limitedReader := io.LimitReader(res.Body, MaxResponseSize+1)
-	body, err := io.ReadAll(limitedReader)
+	responseBody, err := io.ReadAll(limitedReader)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read response body: %w", err)
 	}
 
-	if len(body) > MaxResponseSize {
+	if len(responseBody) > MaxResponseSize {
 		return nil, fmt.Errorf("response too large: exceeds maximum size of %d bytes", MaxResponseSize)
 	}
 
 	if res.StatusCode < 200 || res.StatusCode >= 300 {
-		return nil, fmt.Errorf("request failed with status %d: %s", res.StatusCode, string(body))
+		return nil, fmt.Errorf("request failed with status %d: %s", res.StatusCode, string(responseBody))
 	}
 
-	return body, nil
+	return responseBody, nil
 }
 
 func (c *Client) setAuth(req *http.Request) error {
