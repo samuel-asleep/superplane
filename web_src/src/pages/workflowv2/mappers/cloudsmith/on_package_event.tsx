@@ -5,6 +5,7 @@ import { formatTimeAgo } from "@/utils/date";
 import { MetadataItem } from "@/ui/metadataList";
 import { OnPackageEventMetadata } from "./types";
 import { stringOrDash } from "../utils";
+import cloudsmithIcon from "@/assets/icons/integrations/cloudsmith.svg";
 
 interface OnPackageEventConfiguration {
   repository?: string;
@@ -76,6 +77,7 @@ export const onPackageEventTriggerRenderer: TriggerRenderer = {
 
     const props: TriggerProps = {
       title: node.name || definition.label || "Unnamed trigger",
+      iconSrc: cloudsmithIcon,
       collapsedBackground: getBackgroundColorClass(definition.color),
       metadata: metadataItems,
     };

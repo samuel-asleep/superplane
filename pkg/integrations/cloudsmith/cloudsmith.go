@@ -17,7 +17,7 @@ type Cloudsmith struct{}
 
 type Configuration struct {
 	APIKey    string `json:"apiKey"`
-	Namespace string `json:"namespace"`
+	Workspace string `json:"workspace"`
 }
 
 func (c *Cloudsmith) Name() string {
@@ -29,7 +29,7 @@ func (c *Cloudsmith) Label() string {
 }
 
 func (c *Cloudsmith) Icon() string {
-	return "package"
+	return "cloudsmith"
 }
 
 func (c *Cloudsmith) Description() string {
@@ -40,7 +40,7 @@ func (c *Cloudsmith) Instructions() string {
 	return `
 To generate a Cloudsmith API token:
 - Go to **Cloudsmith** → **Account Settings** → **API Key**
-- Copy the API key and enter it below, along with your organization or user namespace
+- Copy the API key and enter it below, along with your organization or user workspace (slug)
 `
 }
 
@@ -55,11 +55,11 @@ func (c *Cloudsmith) Configuration() []configuration.Field {
 			Description: "Cloudsmith API token",
 		},
 		{
-			Name:        "namespace",
-			Label:       "Namespace",
+			Name:        "workspace",
+			Label:       "Workspace",
 			Type:        configuration.FieldTypeString,
 			Required:    true,
-			Description: "Cloudsmith organization or user namespace",
+			Description: "Cloudsmith organization or user workspace (slug)",
 		},
 	}
 }

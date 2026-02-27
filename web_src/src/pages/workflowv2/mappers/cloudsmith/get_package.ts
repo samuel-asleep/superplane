@@ -13,6 +13,7 @@ import { formatTimeAgo } from "@/utils/date";
 import { MetadataItem } from "@/ui/metadataList";
 import { PackageInfo } from "./types";
 import { formatBytes, stringOrDash } from "../utils";
+import cloudsmithIcon from "@/assets/icons/integrations/cloudsmith.svg";
 
 interface GetPackageConfiguration {
   repository?: string;
@@ -26,6 +27,7 @@ export const getPackageMapper: ComponentBaseMapper = {
 
     return {
       title: context.node.name || context.componentDefinition.label || "Unnamed component",
+      iconSrc: cloudsmithIcon,
       iconColor: getColorClass(context.componentDefinition.color),
       collapsedBackground: getBackgroundColorClass(context.componentDefinition.color),
       collapsed: context.node.isCollapsed,

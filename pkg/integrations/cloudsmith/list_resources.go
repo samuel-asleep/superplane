@@ -21,9 +21,9 @@ func listCloudsmithResources(resourceType string, ctx core.ListResourcesContext)
 }
 
 func listCloudsmithRepositories(ctx core.ListResourcesContext) ([]core.IntegrationResource, error) {
-	namespace, err := ctx.Integration.GetConfig("namespace")
+	workspace, err := ctx.Integration.GetConfig("workspace")
 	if err != nil {
-		return nil, fmt.Errorf("integration namespace is required: %w", err)
+		return nil, fmt.Errorf("integration workspace is required: %w", err)
 	}
 
 	client, err := NewClient(ctx.HTTP, ctx.Integration)
@@ -31,14 +31,14 @@ func listCloudsmithRepositories(ctx core.ListResourcesContext) ([]core.Integrati
 		return nil, err
 	}
 
-	repositories, err := client.ListRepositories(string(namespace))
+	repositories, err := client.ListRepositories(string(workspace))
 	if err != nil {
 		return nil, fmt.Errorf("failed to list repositories: %w", err)
 	}
 
 	resources := make([]core.IntegrationResource, 0, len(repositories))
 	for _, repository := range repositories {
-		value := string(namespace) + "/" + repository.Slug
+		value := string(workspace) + "/" + repository.Slug
 		resources = append(resources, core.IntegrationResource{
 			Type: ResourceTypeRepository,
 			Name: value,

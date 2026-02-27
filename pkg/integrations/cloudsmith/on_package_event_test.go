@@ -50,7 +50,7 @@ func Test__OnPackageEvent__Setup(t *testing.T) {
 		integrationCtx := &contexts.IntegrationContext{
 			Configuration: map[string]any{
 				"apiKey":    "test-api-key",
-				"namespace": "my-org",
+				"workspace": "my-org",
 			},
 		}
 
@@ -85,7 +85,7 @@ func Test__OnPackageEvent__Setup(t *testing.T) {
 		integrationCtx := &contexts.IntegrationContext{
 			Configuration: map[string]any{
 				"apiKey":    "test-api-key",
-				"namespace": "my-org",
+				"workspace": "my-org",
 			},
 		}
 

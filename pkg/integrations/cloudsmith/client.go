@@ -11,12 +11,12 @@ import (
 )
 
 const (
-	defaultBaseURL = "https://api.cloudsmith.io/v1"
+	defaultBaseURL = "https://api.cloudsmith.io"
 )
 
 type Client struct {
 	APIKey    string
-	Namespace string
+	Workspace string
 	BaseURL   string
 	http      core.HTTPContext
 }
@@ -36,16 +36,16 @@ func NewClient(httpClient core.HTTPContext, integration core.IntegrationContext)
 		return nil, fmt.Errorf("API key is required")
 	}
 
-	namespace, err := integration.GetConfig("namespace")
+	workspace, err := integration.GetConfig("workspace")
 	if err != nil {
-		return nil, fmt.Errorf("namespace not configured: %w", err)
+		return nil, fmt.Errorf("workspace not configured: %w", err)
 	}
 
-	ns := strings.TrimSpace(string(namespace))
+	ws := strings.TrimSpace(string(workspace))
 
 	return &Client{
 		APIKey:    key,
-		Namespace: ns,
+		Workspace: ws,
 		BaseURL:   defaultBaseURL,
 		http:      httpClient,
 	}, nil
@@ -84,7 +84,7 @@ func (c *Client) doRequest(method, path string, body io.Reader) (*http.Response,
 }
 
 func (c *Client) ValidateCredentials() error {
-	_, _, err := c.doRequest(http.MethodGet, "/user/", nil)
+	_, _, err := c.doRequest(http.MethodGet, "/user/self/", nil)
 	return err
 }
 

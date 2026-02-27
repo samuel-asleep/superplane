@@ -77,7 +77,7 @@ func Test__GetPackage__Execute(t *testing.T) {
 		Integration: &contexts.IntegrationContext{
 			Configuration: map[string]any{
 				"apiKey":    "test-api-key",
-				"namespace": "my-org",
+				"workspace": "my-org",
 			},
 		},
 		HTTP:           httpCtx,

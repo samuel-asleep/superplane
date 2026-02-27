@@ -24,14 +24,14 @@ func Test__Cloudsmith__NewClient(t *testing.T) {
 		integrationCtx := &contexts.IntegrationContext{
 			Configuration: map[string]any{
 				"apiKey":    "test-api-key",
-				"namespace": "my-org",
+				"workspace": "my-org",
 			},
 		}
 
 		client, err := NewClient(&contexts.HTTPContext{}, integrationCtx)
 		require.NoError(t, err)
 		assert.Equal(t, "test-api-key", client.APIKey)
-		assert.Equal(t, "my-org", client.Namespace)
+		assert.Equal(t, "my-org", client.Workspace)
 	})
 }
 
@@ -48,7 +48,7 @@ func Test__Cloudsmith__ListRepositories(t *testing.T) {
 	integrationCtx := &contexts.IntegrationContext{
 		Configuration: map[string]any{
 			"apiKey":    "test-api-key",
-			"namespace": "my-org",
+			"workspace": "my-org",
 		},
 	}
 
