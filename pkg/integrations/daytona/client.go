@@ -78,7 +78,16 @@ type ExecuteCommandRequest struct {
 // ExecuteCommandResponse represents the response from command execution
 type ExecuteCommandResponse struct {
 	ExitCode int    `json:"exitCode"`
+	Timeout  bool   `json:"timeout"`
 	Result   string `json:"result"`
+}
+
+func (e *ExecuteCommandResponse) ShortResult() string {
+	if len(e.Result) <= 1024 {
+		return e.Result
+	}
+
+	return e.Result[:1024] + "..."
 }
 
 // Snapshot represents a Daytona snapshot
@@ -105,6 +114,31 @@ func (c *Client) ListSnapshots() ([]Snapshot, error) {
 	}
 
 	return result.Items, nil
+}
+
+type PaginatedSandboxes struct {
+	Items []Sandbox `json:"items"`
+}
+
+// ListSandboxes lists available sandboxes
+func (c *Client) ListSandboxes() ([]Sandbox, error) {
+	responseBody, err := c.execRequest(http.MethodGet, c.BaseURL+"/sandbox", nil)
+	if err != nil {
+		return nil, err
+	}
+
+	// Daytona may return either a plain array or a paginated object.
+	var sandboxes []Sandbox
+	if err := json.Unmarshal(responseBody, &sandboxes); err == nil {
+		return sandboxes, nil
+	}
+
+	var paginated PaginatedSandboxes
+	if err := json.Unmarshal(responseBody, &paginated); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal sandboxes response: %v", err)
+	}
+
+	return paginated.Items, nil
 }
 
 // Verify checks if the API key is valid by listing sandboxes
@@ -136,6 +170,19 @@ func (c *Client) CreateSandbox(req *CreateSandboxRequest) (*Sandbox, error) {
 // APIConfig represents the relevant fields from the /api/config endpoint
 type APIConfig struct {
 	ProxyToolboxURL string `json:"proxyToolboxUrl"`
+}
+
+type PreviewURL struct {
+	SandboxID string `json:"sandboxId"`
+	URL       string `json:"url"`
+	Token     string `json:"token"`
+}
+
+type SignedPreviewURL struct {
+	SandboxID string `json:"sandboxId"`
+	Port      int    `json:"port"`
+	Token     string `json:"token"`
+	URL       string `json:"url"`
 }
 
 // FetchConfig fetches the API configuration from the /api/config endpoint
@@ -367,6 +414,44 @@ func (c *Client) GetSandbox(sandboxID string) (*Sandbox, error) {
 	}
 
 	return &sandbox, nil
+}
+
+func (c *Client) GetPreviewURL(sandboxID string, port int) (*PreviewURL, error) {
+	url := fmt.Sprintf("%s/sandbox/%s/ports/%d/preview-url", c.BaseURL, sandboxID, port)
+
+	responseBody, err := c.execRequest(http.MethodGet, url, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	var preview PreviewURL
+	if err := json.Unmarshal(responseBody, &preview); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal preview URL response: %v", err)
+	}
+
+	return &preview, nil
+}
+
+func (c *Client) GetSignedPreviewURL(sandboxID string, port int, expiresInSeconds int) (*SignedPreviewURL, error) {
+	url := fmt.Sprintf(
+		"%s/sandbox/%s/ports/%d/signed-preview-url?expiresInSeconds=%d",
+		c.BaseURL,
+		sandboxID,
+		port,
+		expiresInSeconds,
+	)
+
+	responseBody, err := c.execRequest(http.MethodGet, url, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	var preview SignedPreviewURL
+	if err := json.Unmarshal(responseBody, &preview); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal signed preview URL response: %v", err)
+	}
+
+	return &preview, nil
 }
 
 // DeleteSandbox deletes a sandbox

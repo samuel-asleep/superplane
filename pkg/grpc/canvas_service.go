@@ -52,7 +52,16 @@ func (s *CanvasService) UpdateCanvas(ctx context.Context, req *pb.UpdateCanvasRe
 		return nil, status.Error(codes.InvalidArgument, "canvas is required")
 	}
 	organizationID := ctx.Value(authorization.OrganizationContextKey).(string)
-	return canvases.UpdateCanvas(ctx, s.encryptor, s.registry, organizationID, req.Id, req.Canvas, s.webhookBaseURL)
+	return canvases.UpdateCanvasWithAutoLayout(
+		ctx,
+		s.encryptor,
+		s.registry,
+		organizationID,
+		req.Id,
+		req.Canvas,
+		req.AutoLayout,
+		s.webhookBaseURL,
+	)
 }
 
 func (s *CanvasService) DeleteCanvas(ctx context.Context, req *pb.DeleteCanvasRequest) (*pb.DeleteCanvasResponse, error) {
@@ -230,4 +239,9 @@ func (s *CanvasService) ResolveExecutionErrors(ctx context.Context, req *pb.Reso
 	}
 
 	return canvases.ResolveExecutionErrors(ctx, canvasID, executionIDs)
+}
+
+func (s *CanvasService) SendAiMessage(ctx context.Context, req *pb.SendAiMessageRequest) (*pb.SendAiMessageResponse, error) {
+	organizationID := ctx.Value(authorization.OrganizationContextKey).(string)
+	return canvases.SendAiMessage(ctx, s.registry, s.encryptor, organizationID, req)
 }

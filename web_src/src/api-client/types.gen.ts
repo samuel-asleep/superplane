@@ -62,6 +62,14 @@ export type BlueprintsUpdateBlueprintResponse = {
   blueprint?: BlueprintsBlueprint;
 };
 
+export type CanvasAutoLayoutAlgorithm = "ALGORITHM_UNSPECIFIED" | "ALGORITHM_HORIZONTAL";
+
+export type CanvasAutoLayoutScope =
+  | "SCOPE_UNSPECIFIED"
+  | "SCOPE_FULL_CANVAS"
+  | "SCOPE_CONNECTED_COMPONENT"
+  | "SCOPE_EXACT_SET";
+
 export type CanvasNodeExecutionResult = "RESULT_UNKNOWN" | "RESULT_PASSED" | "RESULT_FAILED" | "RESULT_CANCELLED";
 
 export type CanvasNodeExecutionResultReason =
@@ -83,6 +91,30 @@ export type CanvasesCanvas = {
   metadata?: CanvasesCanvasMetadata;
   spec?: CanvasesCanvasSpec;
   status?: CanvasesCanvasStatus;
+};
+
+export type CanvasesCanvasAiBlockContext = {
+  name?: string;
+  label?: string;
+  type?: string;
+};
+
+export type CanvasesCanvasAiContext = {
+  nodes?: Array<CanvasesCanvasAiNodeContext>;
+  availableBlocks?: Array<CanvasesCanvasAiBlockContext>;
+};
+
+export type CanvasesCanvasAiNodeContext = {
+  id?: string;
+  name?: string;
+  label?: string;
+  type?: string;
+};
+
+export type CanvasesCanvasAutoLayout = {
+  algorithm?: CanvasAutoLayoutAlgorithm;
+  nodeIds?: Array<string>;
+  scope?: CanvasAutoLayoutScope;
 };
 
 export type CanvasesCanvasEvent = {
@@ -277,8 +309,21 @@ export type CanvasesResolveExecutionErrorsResponse = {
   [key: string]: unknown;
 };
 
+export type CanvasesSendAiMessageBody = {
+  prompt?: string;
+  canvasContext?: CanvasesCanvasAiContext;
+};
+
+export type CanvasesSendAiMessageResponse = {
+  assistantMessage?: string;
+  operations?: Array<{
+    [key: string]: unknown;
+  }>;
+};
+
 export type CanvasesUpdateCanvasBody = {
   canvas?: CanvasesCanvas;
+  autoLayout?: CanvasesCanvasAutoLayout;
 };
 
 export type CanvasesUpdateCanvasResponse = {
@@ -615,6 +660,23 @@ export type NodeWidgetRef = {
   name?: string;
 };
 
+export type OrganizationsAgentOpenAiKey = {
+  configured?: boolean;
+  last4?: string;
+  status?: string;
+  validationError?: string;
+  validatedAt?: string;
+  updatedAt?: string;
+  updatedBy?: string;
+};
+
+export type OrganizationsAgentSettings = {
+  organizationId?: string;
+  agentModeEnabled?: boolean;
+  agentModeEffective?: boolean;
+  openaiKey?: OrganizationsAgentOpenAiKey;
+};
+
 export type OrganizationsBrowserAction = {
   url?: string;
   method?: string;
@@ -644,6 +706,10 @@ export type OrganizationsCreateInvitationResponse = {
   invitation?: OrganizationsInvitation;
 };
 
+export type OrganizationsDeleteAgentOpenAiKeyResponse = {
+  agentSettings?: OrganizationsAgentSettings;
+};
+
 export type OrganizationsDeleteIntegrationResponse = {
   [key: string]: unknown;
 };
@@ -658,6 +724,10 @@ export type OrganizationsDescribeIntegrationResponse = {
 
 export type OrganizationsDescribeOrganizationResponse = {
   organization?: OrganizationsOrganization;
+};
+
+export type OrganizationsGetAgentSettingsResponse = {
+  agentSettings?: OrganizationsAgentSettings;
 };
 
 export type OrganizationsGetInviteLinkResponse = {
@@ -747,6 +817,23 @@ export type OrganizationsRemoveUserResponse = {
 
 export type OrganizationsResetInviteLinkResponse = {
   inviteLink?: OrganizationsInviteLink;
+};
+
+export type OrganizationsSetAgentOpenAiKeyBody = {
+  apiKey?: string;
+  validate?: boolean;
+};
+
+export type OrganizationsSetAgentOpenAiKeyResponse = {
+  agentSettings?: OrganizationsAgentSettings;
+};
+
+export type OrganizationsUpdateAgentSettingsBody = {
+  agentModeEnabled?: boolean;
+};
+
+export type OrganizationsUpdateAgentSettingsResponse = {
+  agentSettings?: OrganizationsAgentSettings;
 };
 
 export type OrganizationsUpdateIntegrationBody = {
@@ -1318,6 +1405,33 @@ export type CanvasesCreateCanvasResponses = {
 };
 
 export type CanvasesCreateCanvasResponse2 = CanvasesCreateCanvasResponses[keyof CanvasesCreateCanvasResponses];
+
+export type CanvasesSendAiMessageData = {
+  body: CanvasesSendAiMessageBody;
+  path: {
+    canvasId: string;
+  };
+  query?: never;
+  url: "/api/v1/canvases/{canvasId}/ai/messages";
+};
+
+export type CanvasesSendAiMessageErrors = {
+  /**
+   * An unexpected error response.
+   */
+  default: GooglerpcStatus;
+};
+
+export type CanvasesSendAiMessageError = CanvasesSendAiMessageErrors[keyof CanvasesSendAiMessageErrors];
+
+export type CanvasesSendAiMessageResponses = {
+  /**
+   * A successful response.
+   */
+  200: CanvasesSendAiMessageResponse;
+};
+
+export type CanvasesSendAiMessageResponse2 = CanvasesSendAiMessageResponses[keyof CanvasesSendAiMessageResponses];
 
 export type CanvasesListCanvasEventsData = {
   body?: never;
@@ -2303,6 +2417,122 @@ export type OrganizationsUpdateOrganizationResponses = {
 
 export type OrganizationsUpdateOrganizationResponse2 =
   OrganizationsUpdateOrganizationResponses[keyof OrganizationsUpdateOrganizationResponses];
+
+export type OrganizationsGetAgentSettingsData = {
+  body?: never;
+  path: {
+    id: string;
+  };
+  query?: never;
+  url: "/api/v1/organizations/{id}/agent-settings";
+};
+
+export type OrganizationsGetAgentSettingsErrors = {
+  /**
+   * An unexpected error response.
+   */
+  default: GooglerpcStatus;
+};
+
+export type OrganizationsGetAgentSettingsError =
+  OrganizationsGetAgentSettingsErrors[keyof OrganizationsGetAgentSettingsErrors];
+
+export type OrganizationsGetAgentSettingsResponses = {
+  /**
+   * A successful response.
+   */
+  200: OrganizationsGetAgentSettingsResponse;
+};
+
+export type OrganizationsGetAgentSettingsResponse2 =
+  OrganizationsGetAgentSettingsResponses[keyof OrganizationsGetAgentSettingsResponses];
+
+export type OrganizationsUpdateAgentSettingsData = {
+  body: OrganizationsUpdateAgentSettingsBody;
+  path: {
+    id: string;
+  };
+  query?: never;
+  url: "/api/v1/organizations/{id}/agent-settings";
+};
+
+export type OrganizationsUpdateAgentSettingsErrors = {
+  /**
+   * An unexpected error response.
+   */
+  default: GooglerpcStatus;
+};
+
+export type OrganizationsUpdateAgentSettingsError =
+  OrganizationsUpdateAgentSettingsErrors[keyof OrganizationsUpdateAgentSettingsErrors];
+
+export type OrganizationsUpdateAgentSettingsResponses = {
+  /**
+   * A successful response.
+   */
+  200: OrganizationsUpdateAgentSettingsResponse;
+};
+
+export type OrganizationsUpdateAgentSettingsResponse2 =
+  OrganizationsUpdateAgentSettingsResponses[keyof OrganizationsUpdateAgentSettingsResponses];
+
+export type OrganizationsDeleteAgentOpenAiKeyData = {
+  body?: never;
+  path: {
+    id: string;
+  };
+  query?: never;
+  url: "/api/v1/organizations/{id}/agent-settings/openai-key";
+};
+
+export type OrganizationsDeleteAgentOpenAiKeyErrors = {
+  /**
+   * An unexpected error response.
+   */
+  default: GooglerpcStatus;
+};
+
+export type OrganizationsDeleteAgentOpenAiKeyError =
+  OrganizationsDeleteAgentOpenAiKeyErrors[keyof OrganizationsDeleteAgentOpenAiKeyErrors];
+
+export type OrganizationsDeleteAgentOpenAiKeyResponses = {
+  /**
+   * A successful response.
+   */
+  200: OrganizationsDeleteAgentOpenAiKeyResponse;
+};
+
+export type OrganizationsDeleteAgentOpenAiKeyResponse2 =
+  OrganizationsDeleteAgentOpenAiKeyResponses[keyof OrganizationsDeleteAgentOpenAiKeyResponses];
+
+export type OrganizationsSetAgentOpenAiKeyData = {
+  body: OrganizationsSetAgentOpenAiKeyBody;
+  path: {
+    id: string;
+  };
+  query?: never;
+  url: "/api/v1/organizations/{id}/agent-settings/openai-key";
+};
+
+export type OrganizationsSetAgentOpenAiKeyErrors = {
+  /**
+   * An unexpected error response.
+   */
+  default: GooglerpcStatus;
+};
+
+export type OrganizationsSetAgentOpenAiKeyError =
+  OrganizationsSetAgentOpenAiKeyErrors[keyof OrganizationsSetAgentOpenAiKeyErrors];
+
+export type OrganizationsSetAgentOpenAiKeyResponses = {
+  /**
+   * A successful response.
+   */
+  200: OrganizationsSetAgentOpenAiKeyResponse;
+};
+
+export type OrganizationsSetAgentOpenAiKeyResponse2 =
+  OrganizationsSetAgentOpenAiKeyResponses[keyof OrganizationsSetAgentOpenAiKeyResponses];
 
 export type OrganizationsListIntegrationsData = {
   body?: never;

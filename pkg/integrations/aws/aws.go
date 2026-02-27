@@ -146,6 +146,7 @@ func (a *AWS) Components() []core.Component {
 		&codeartifact.UpdatePackageVersionsStatus{},
 		&codepipeline.GetPipeline{},
 		&codepipeline.GetPipelineExecution{},
+		&codepipeline.RetryStageExecution{},
 		&codepipeline.RunPipeline{},
 		&ecs.CreateService{},
 		&ecs.DescribeService{},
@@ -185,6 +186,7 @@ func (a *AWS) Triggers() []core.Trigger {
 	return []core.Trigger{
 		&cloudwatch.OnAlarm{},
 		&codeartifact.OnPackageVersion{},
+		&codepipeline.OnPipeline{},
 		&ec2.OnImage{},
 		&ecr.OnImageScan{},
 		&ecr.OnImagePush{},

@@ -11,7 +11,7 @@ import {
   type EdgeChange,
 } from "@xyflow/react";
 
-import { CircleX, Loader2, ScanLine, ScanText, ScrollText, TriangleAlert } from "lucide-react";
+import { CircleX, Loader2, ScanLine, ScanText, ScrollText, TriangleAlert, Workflow } from "lucide-react";
 import { ZoomSlider } from "@/components/zoom-slider";
 import { NodeSearch } from "@/components/node-search";
 import { Button } from "@/components/ui/button";
@@ -31,7 +31,12 @@ import {
 import { parseDefaultValues } from "@/utils/components";
 import { getActiveNoteId, restoreActiveNoteFocus } from "@/ui/annotationComponent/noteFocus";
 import { AiSidebar } from "../ai";
-import { BuildingBlock, BuildingBlockCategory, BuildingBlocksSidebar } from "../BuildingBlocksSidebar";
+import {
+  AiCanvasOperation,
+  BuildingBlock,
+  BuildingBlockCategory,
+  BuildingBlocksSidebar,
+} from "../BuildingBlocksSidebar";
 import { ComponentSidebar } from "../componentSidebar";
 import { TabData } from "../componentSidebar/SidebarEventItem/SidebarEventItem";
 import { EmitEventModal } from "../EmitEventModal";
@@ -125,6 +130,7 @@ export interface CanvasPageProps {
   breadcrumbs?: BreadcrumbItem[];
   headerBanner?: React.ReactNode;
   organizationId?: string;
+  canvasId?: string;
   unsavedMessage?: string;
   saveIsPrimary?: boolean;
   saveButtonHidden?: boolean;
@@ -192,13 +198,16 @@ export interface CanvasPageProps {
   onTogglePause?: (nodeId: string) => void;
   onToggleView?: (nodeId: string) => void;
   onToggleCollapse?: () => void;
+  onAutoLayout?: (selectedNodeIDs: string[]) => void | Promise<void>;
   onReEmit?: (nodeId: string, eventOrExecutionId: string) => void;
 
   ai?: AiProps;
 
   // Building blocks for adding new nodes
   buildingBlocks: BuildingBlockCategory[];
+  showAiBuilderTab?: boolean;
   onNodeAdd?: (newNodeData: NewNodeData) => Promise<string>;
+  onApplyAiOperations?: (operations: AiCanvasOperation[]) => Promise<void>;
   onPlaceholderAdd?: (data: {
     position: { x: number; y: number };
     sourceNodeId: string;
@@ -820,6 +829,16 @@ function CanvasPage(props: CanvasPageProps) {
           isOpen={isBuildingBlocksSidebarOpen}
           onToggle={handleSidebarToggle}
           blocks={props.buildingBlocks || []}
+          showAiBuilderTab={props.showAiBuilderTab}
+          canvasId={props.canvasId}
+          canvasNodes={state.nodes.map((node) => ({
+            id: node.id,
+            name: String((node.data as { nodeName?: string })?.nodeName || ""),
+            label: String((node.data as { label?: string })?.label || ""),
+            type: String((node.data as { type?: string })?.type || ""),
+          }))}
+          onApplyAiOperations={props.onApplyAiOperations}
+          integrations={props.integrations}
           canvasZoom={canvasZoom}
           disabled={readOnly}
           disabledMessage="You don't have permission to edit this canvas."
@@ -838,6 +857,7 @@ function CanvasPage(props: CanvasPageProps) {
               hideHeader={true}
               onToggleView={handleToggleView}
               onToggleCollapse={props.onToggleCollapse}
+              onAutoLayout={props.onAutoLayout}
               onRun={(nodeId) => handleNodeRun(nodeId)}
               onDuplicate={props.onDuplicate}
               onConfigure={props.onConfigure}
@@ -1325,6 +1345,7 @@ function CanvasContent({
   onTogglePause,
   onToggleView,
   onToggleCollapse,
+  onAutoLayout,
   onAnnotationUpdate,
   onAnnotationBlur,
   onBuildingBlockDrop,
@@ -1373,6 +1394,7 @@ function CanvasContent({
   onTogglePause?: (nodeId: string) => void;
   onToggleView?: (nodeId: string) => void;
   onToggleCollapse?: () => void;
+  onAutoLayout?: (selectedNodeIDs: string[]) => void | Promise<void>;
   onDelete?: (nodeId: string) => void;
   onAnnotationUpdate?: (
     nodeId: string,
@@ -1443,8 +1465,6 @@ function CanvasContent({
 
   // Track if we've initialized to prevent flicker
   const [isInitialized, setIsInitialized] = useState(hasFitToViewRef.current);
-  const [isSelectionModeEnabled, setIsSelectionModeEnabled] = useState(false);
-  const [isTemporarilyEnabled, setIsTemporarilyEnabled] = useState(false);
   const [isLogSidebarOpen, setIsLogSidebarOpen] = useState(false);
   const [logFilter, setLogFilter] = useState<LogTypeFilter>(new Set());
   const [logScope, setLogScope] = useState<LogScopeFilter>("all");
@@ -1452,6 +1472,7 @@ function CanvasContent({
   const [expandedRuns, setExpandedRuns] = useState<Set<string>>(() => new Set());
   const [logSidebarHeight, setLogSidebarHeight] = useState(320);
   const [isSnapToGridEnabled, setIsSnapToGridEnabled] = useState(true);
+  const [isAutoLayouting, setIsAutoLayouting] = useState(false);
 
   useEffect(() => {
     const activeNoteId = getActiveNoteId();
@@ -1663,6 +1684,30 @@ function CanvasContent({
     onToggleCollapse?.();
   }, [state.toggleCollapse, onToggleCollapse]);
 
+  const selectedNodeIDs = useMemo(
+    () => state.nodes.filter((node) => node.selected).map((node) => node.id),
+    [state.nodes],
+  );
+
+  const handleAutoLayout = useCallback(async () => {
+    if (!onAutoLayout || isReadOnly || isAutoLayouting || selectedNodeIDs.length === 0) {
+      return;
+    }
+
+    try {
+      setIsAutoLayouting(true);
+      await onAutoLayout(selectedNodeIDs);
+    } finally {
+      setIsAutoLayouting(false);
+    }
+  }, [onAutoLayout, isReadOnly, isAutoLayouting, selectedNodeIDs]);
+
+  const isAutoLayoutDisabled = isReadOnly || !onAutoLayout || isAutoLayouting || selectedNodeIDs.length === 0;
+  const autoLayoutTooltipMessage =
+    selectedNodeIDs.length === 0
+      ? "Select one or more nodes to auto arrange"
+      : "Auto arrange selected components left-to-right";
+
   useEffect(() => {
     if (!focusRequest) {
       return;
@@ -1695,45 +1740,6 @@ function CanvasContent({
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [handleToggleCollapse]);
-
-  // Handle temporary selection mode activation with Cmd/Ctrl
-  // When button is OFF and user presses Cmd/Ctrl, visually enable the button
-  // When Cmd/Ctrl is released, visually disable the button (if it was temporarily enabled)
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      // If button is off and user presses Cmd/Ctrl, temporarily enable it visually
-      if (!isSelectionModeEnabled && !isTemporarilyEnabled && (e.ctrlKey || e.metaKey)) {
-        setIsSelectionModeEnabled(true);
-        setIsTemporarilyEnabled(true);
-      }
-    };
-
-    const handleKeyUp = (e: KeyboardEvent) => {
-      // If button was temporarily enabled and user releases Cmd/Ctrl, disable it
-      if (isTemporarilyEnabled && !e.ctrlKey && !e.metaKey) {
-        setIsSelectionModeEnabled(false);
-        setIsTemporarilyEnabled(false);
-      }
-    };
-
-    const handleMouseUp = (e: MouseEvent) => {
-      // If button was temporarily enabled and user releases mouse, disable it
-      // Only if Cmd/Ctrl is not still pressed
-      if (isTemporarilyEnabled && !e.ctrlKey && !e.metaKey) {
-        setIsSelectionModeEnabled(false);
-        setIsTemporarilyEnabled(false);
-      }
-    };
-
-    document.addEventListener("keydown", handleKeyDown);
-    document.addEventListener("keyup", handleKeyUp);
-    document.addEventListener("mouseup", handleMouseUp);
-    return () => {
-      document.removeEventListener("keydown", handleKeyDown);
-      document.removeEventListener("keyup", handleKeyUp);
-      document.removeEventListener("mouseup", handleMouseUp);
-    };
-  }, [isSelectionModeEnabled, isTemporarilyEnabled]);
 
   const handlePaneClick = useCallback(() => {
     // Do not close sidebar or reset state while creating a new component
@@ -2106,14 +2112,10 @@ function CanvasContent({
             zoomOnPinch={true}
             zoomOnDoubleClick={false}
             panOnScroll={true}
-            panOnDrag={!isSelectionModeEnabled || isTemporarilyEnabled}
+            panOnDrag={true}
             selectionOnDrag={true}
-            {...(isSelectionModeEnabled && !isTemporarilyEnabled
-              ? {}
-              : {
-                  selectionKeyCode: selectionKey,
-                  multiSelectionKeyCode: selectionKey,
-                })}
+            selectionKeyCode={selectionKey}
+            multiSelectionKeyCode={selectionKey}
             snapToGrid={isSnapToGridEnabled}
             snapGrid={[48, 48]}
             panOnScrollSpeed={0.8}
@@ -2142,11 +2144,6 @@ function CanvasContent({
             <ZoomSlider
               position="bottom-left"
               orientation="horizontal"
-              isSelectionModeEnabled={isSelectionModeEnabled}
-              onSelectionModeToggle={() => {
-                setIsSelectionModeEnabled((prev) => !prev);
-                setIsTemporarilyEnabled(false);
-              }}
               screenshotName={title}
               isSnapToGridEnabled={isSnapToGridEnabled}
               onSnapToGridToggle={() => setIsSnapToGridEnabled((prev) => !prev)}
@@ -2162,6 +2159,26 @@ function CanvasContent({
                     ? "Switch components to Detailed view (Ctrl/Cmd + E)"
                     : "Switch components to Compact view (Ctrl/Cmd + E)"}
                 </TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span className="inline-flex">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 px-2 text-xs font-medium"
+                      onClick={handleAutoLayout}
+                      disabled={isAutoLayoutDisabled}
+                    >
+                      {isAutoLayouting ? (
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                      ) : (
+                        <Workflow className="h-3 w-3" />
+                      )}
+                    </Button>
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent>{autoLayoutTooltipMessage}</TooltipContent>
               </Tooltip>
               <NodeSearch
                 onSearch={(searchString) => {
@@ -2185,7 +2202,7 @@ function CanvasContent({
             <Panel
               position="bottom-left"
               className="bg-white text-gray-800 outline-1 outline-slate-950/20 flex items-center gap-1 rounded-md p-0.5 h-8"
-              style={{ marginLeft: 380 }}
+              style={{ marginLeft: 370 }}
             >
               <Tooltip>
                 <TooltipTrigger asChild>

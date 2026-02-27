@@ -7,6 +7,20 @@ import (
 	"github.com/superplanehq/superplane/pkg/utils"
 )
 
+//go:embed example_data_on_pipeline.json
+var exampleDataOnPipelineBytes []byte
+
+var exampleDataOnPipelineOnce sync.Once
+var exampleDataOnPipeline map[string]any
+
+func (p *OnPipeline) ExampleData() map[string]any {
+	return utils.UnmarshalEmbeddedJSON(
+		&exampleDataOnPipelineOnce,
+		exampleDataOnPipelineBytes,
+		&exampleDataOnPipeline,
+	)
+}
+
 //go:embed example_output_run_pipeline.json
 var exampleOutputRunPipelineBytes []byte
 
@@ -46,5 +60,19 @@ func (c *GetPipelineExecution) ExampleOutput() map[string]any {
 		&exampleOutputGetPipelineExecutionOnce,
 		exampleOutputGetPipelineExecutionBytes,
 		&exampleOutputGetPipelineExecution,
+	)
+}
+
+//go:embed example_output_retry_stage_execution.json
+var exampleOutputRetryStageExecutionBytes []byte
+
+var exampleOutputRetryStageExecutionOnce sync.Once
+var exampleOutputRetryStageExecution map[string]any
+
+func (c *RetryStageExecution) ExampleOutput() map[string]any {
+	return utils.UnmarshalEmbeddedJSON(
+		&exampleOutputRetryStageExecutionOnce,
+		exampleOutputRetryStageExecutionBytes,
+		&exampleOutputRetryStageExecution,
 	)
 }
