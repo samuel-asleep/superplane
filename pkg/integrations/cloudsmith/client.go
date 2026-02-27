@@ -163,6 +163,9 @@ func (c *Client) CreateWebhook(namespace, repo, targetURL string, events []strin
 		return "", fmt.Errorf("namespace, repo, and targetURL are required")
 	}
 
+	// Cloudsmith requires a templates entry per subscribed event. The Template field
+	// holds a Handlebars template string for custom payload formatting; an empty string
+	// uses the default JSON payload (request_body_format = 0).
 	templates := make([]WebhookTemplate, 0, len(events))
 	for _, event := range events {
 		templates = append(templates, WebhookTemplate{Event: event, Template: ""})
