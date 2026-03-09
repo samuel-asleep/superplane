@@ -853,7 +853,7 @@ func (r ApiCanvasesUpdateCanvasRequest) Execute() (*CanvasesUpdateCanvasResponse
 /*
 CanvasesUpdateCanvas Update canvas
 
-Updates an existing canvas
+Updates canvas metadata
 
 	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
 	@param id

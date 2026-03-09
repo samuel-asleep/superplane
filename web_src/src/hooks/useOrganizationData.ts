@@ -28,6 +28,7 @@ import {
   organizationsDeleteAgentOpenAiKey,
 } from "../api-client/sdk.gen";
 import { RolesCreateRoleRequest, AuthorizationDomainType, OrganizationsRemoveUserData } from "@/api-client";
+import { canvasKeys } from "./useCanvasData";
 import { withOrganizationHeader } from "../utils/withOrganizationHeader";
 
 // Query Keys
@@ -46,7 +47,7 @@ export const organizationKeys = {
 };
 
 // Hooks for fetching data
-export const useOrganization = (organizationId: string) => {
+export const useOrganization = (organizationId: string, enabled = true) => {
   return useQuery({
     queryKey: organizationKeys.details(organizationId),
     queryFn: async () => {
@@ -59,7 +60,7 @@ export const useOrganization = (organizationId: string) => {
     },
     staleTime: 5 * 60 * 1000, // 5 minutes
     gcTime: 10 * 60 * 1000, // 10 minutes
-    enabled: !!organizationId,
+    enabled: !!organizationId && enabled,
   });
 };
 
@@ -595,7 +596,7 @@ export const useUpdateOrganization = (organizationId: string) => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (params: { name?: string; description?: string }) => {
+    mutationFn: async (params: { name?: string; description?: string; canvasVersioningEnabled?: boolean }) => {
       return await organizationsUpdateOrganization(
         withOrganizationHeader({
           path: { id: organizationId },
@@ -604,14 +605,18 @@ export const useUpdateOrganization = (organizationId: string) => {
               metadata: {
                 name: params.name,
                 description: params.description,
+                canvasVersioningEnabled: params.canvasVersioningEnabled,
               },
             },
           },
         }),
       );
     },
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: organizationKeys.details(organizationId) });
+      if (typeof variables.canvasVersioningEnabled === "boolean") {
+        queryClient.invalidateQueries({ queryKey: canvasKeys.all });
+      }
     },
   });
 };

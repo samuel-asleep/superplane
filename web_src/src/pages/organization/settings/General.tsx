@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Trash2 } from "lucide-react";
 import { useParams } from "react-router-dom";
 import type { OrganizationsOrganization } from "../../../api-client/types.gen";
@@ -23,6 +23,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { PermissionTooltip } from "@/components/PermissionGate";
+import { Switch } from "@/ui/switch";
 import { usePermissions } from "@/contexts/PermissionsContext";
 import { getApiErrorMessage } from "@/utils/errors";
 
@@ -34,6 +35,7 @@ export function General({ organization }: GeneralProps) {
   const { organizationId } = useParams<{ organizationId: string }>();
   const { canAct, isLoading: permissionsLoading } = usePermissions();
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
+  const [versioningMessage, setVersioningMessage] = useState<string | null>(null);
   const [name, setName] = useState(organization.metadata?.name || "");
   const [deleteConfirmation, setDeleteConfirmation] = useState("");
   const [deleteError, setDeleteError] = useState<string | null>(null);
@@ -41,6 +43,9 @@ export function General({ organization }: GeneralProps) {
   const [agentApiKey, setAgentApiKey] = useState("");
   const [agentApiKeyError, setAgentApiKeyError] = useState<string | null>(null);
   const [showAgentConfigureModal, setShowAgentConfigureModal] = useState(false);
+  const [canvasVersioningEnabled, setCanvasVersioningEnabled] = useState(
+    organization.metadata?.canvasVersioningEnabled ?? false,
+  );
 
   // Use React Query mutation hook
   const updateOrganizationMutation = useUpdateOrganization(organizationId || "");
@@ -51,6 +56,10 @@ export function General({ organization }: GeneralProps) {
   const deleteAgentOpenAIKeyMutation = useDeleteOrganizationAgentOpenAIKey(organizationId || "");
   const canUpdateOrg = canAct("org", "update");
   const canDeleteOrg = canAct("org", "delete");
+
+  useEffect(() => {
+    setCanvasVersioningEnabled(organization.metadata?.canvasVersioningEnabled ?? false);
+  }, [organization.metadata?.canvasVersioningEnabled]);
 
   const agentModeEnabled = agentSettings?.agentModeEnabled ?? false;
   const openAIKey = agentSettings?.openaiKey;
@@ -157,6 +166,28 @@ export function General({ organization }: GeneralProps) {
       setShowAgentConfigureModal(false);
     } catch (_err) {
       console.error(`Failed to disable Agent Mode: ${getApiErrorMessage(_err)}`);
+    }
+  };
+
+  const handleCanvasVersioningToggle = async (enabled: boolean) => {
+    if (!canUpdateOrg || !organizationId) {
+      return;
+    }
+
+    const previous = canvasVersioningEnabled;
+    setCanvasVersioningEnabled(enabled);
+    setVersioningMessage(null);
+
+    try {
+      await updateOrganizationMutation.mutateAsync({
+        canvasVersioningEnabled: enabled,
+      });
+      setVersioningMessage(`Canvas versioning ${enabled ? "enabled" : "disabled"}`);
+      setTimeout(() => setVersioningMessage(null), 3000);
+    } catch {
+      setCanvasVersioningEnabled(previous);
+      setVersioningMessage("Failed to update canvas versioning");
+      setTimeout(() => setVersioningMessage(null), 3000);
     }
   };
 
@@ -305,6 +336,46 @@ export function General({ organization }: GeneralProps) {
               </form>
             </DialogContent>
           </Dialog>
+        </Fieldset>
+      </PermissionTooltip>
+
+      <PermissionTooltip
+        allowed={canUpdateOrg || permissionsLoading}
+        message="You don't have permission to update this organization."
+        className="w-full"
+      >
+        <Fieldset className="bg-white dark:bg-gray-800 rounded-lg border border-gray-300 dark:border-gray-800 p-6">
+          <div className="flex items-start justify-between gap-6">
+            <div>
+              <Label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Canvas Versioning
+              </Label>
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                Manage canvas edits with drafts and publish flow. When enabled at the organization level, versioning is
+                enforced for every canvas and cannot be turned off per canvas.
+              </p>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                When disabled here, each canvas can choose its own versioning setting. New canvases inherit this
+                organization setting by default.
+              </p>
+            </div>
+            <div className="flex items-center gap-3">
+              <span className="text-xs text-gray-500 dark:text-gray-400">
+                {canvasVersioningEnabled ? "Enabled" : "Disabled"}
+              </span>
+              <Switch
+                checked={canvasVersioningEnabled}
+                onCheckedChange={handleCanvasVersioningToggle}
+                disabled={updateOrganizationMutation.isPending || !canUpdateOrg}
+                aria-label="Toggle canvas versioning"
+              />
+            </div>
+          </div>
+          {versioningMessage ? (
+            <p className={`mt-3 text-sm ${versioningMessage.includes("Failed") ? "text-red-600" : "text-green-600"}`}>
+              {versioningMessage}
+            </p>
+          ) : null}
         </Fieldset>
       </PermissionTooltip>
 

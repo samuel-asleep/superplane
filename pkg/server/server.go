@@ -35,6 +35,7 @@ import (
 	_ "github.com/superplanehq/superplane/pkg/components/ssh"
 	_ "github.com/superplanehq/superplane/pkg/components/timegate"
 	_ "github.com/superplanehq/superplane/pkg/components/updatememory"
+	_ "github.com/superplanehq/superplane/pkg/components/upsertmemory"
 	_ "github.com/superplanehq/superplane/pkg/components/wait"
 	_ "github.com/superplanehq/superplane/pkg/integrations/aws"
 	_ "github.com/superplanehq/superplane/pkg/integrations/bitbucket"
@@ -48,6 +49,7 @@ import (
 	_ "github.com/superplanehq/superplane/pkg/integrations/digitalocean"
 	_ "github.com/superplanehq/superplane/pkg/integrations/discord"
 	_ "github.com/superplanehq/superplane/pkg/integrations/dockerhub"
+	_ "github.com/superplanehq/superplane/pkg/integrations/firehydrant"
 	_ "github.com/superplanehq/superplane/pkg/integrations/gcp"
 	_ "github.com/superplanehq/superplane/pkg/integrations/github"
 	_ "github.com/superplanehq/superplane/pkg/integrations/gitlab"
@@ -59,6 +61,7 @@ import (
 	_ "github.com/superplanehq/superplane/pkg/integrations/jfrog_artifactory"
 	_ "github.com/superplanehq/superplane/pkg/integrations/jira"
 	_ "github.com/superplanehq/superplane/pkg/integrations/launchdarkly"
+	_ "github.com/superplanehq/superplane/pkg/integrations/newrelic"
 	_ "github.com/superplanehq/superplane/pkg/integrations/octopus"
 	_ "github.com/superplanehq/superplane/pkg/integrations/openai"
 	_ "github.com/superplanehq/superplane/pkg/integrations/pagerduty"
@@ -71,6 +74,7 @@ import (
 	_ "github.com/superplanehq/superplane/pkg/integrations/slack"
 	_ "github.com/superplanehq/superplane/pkg/integrations/smtp"
 	_ "github.com/superplanehq/superplane/pkg/integrations/statuspage"
+	_ "github.com/superplanehq/superplane/pkg/integrations/teams"
 	_ "github.com/superplanehq/superplane/pkg/integrations/telegram"
 	_ "github.com/superplanehq/superplane/pkg/triggers/schedule"
 	_ "github.com/superplanehq/superplane/pkg/triggers/start"
@@ -422,19 +426,19 @@ var DefaultMaxHTTPResponseBytes int64 = 8 * 1024 * 1024
  * - Localhost variations
  */
 var defaultBlockedHTTPHosts = []string{
-	// "metadata.google.internal",
-	// "metadata.goog",
-	// "metadata.azure.com",
-	// "169.254.169.254",
-	// "fd00:ec2::254",
-	// "kubernetes.default",
-	// "kubernetes.default.svc",
-	// "kubernetes.default.svc.cluster.local",
-	// "localhost",
-	// "127.0.0.1",
-	// "::1",
-	// "0.0.0.0",
-	// "::",
+	"metadata.google.internal",
+	"metadata.goog",
+	"metadata.azure.com",
+	"169.254.169.254",
+	"fd00:ec2::254",
+	"kubernetes.default",
+	"kubernetes.default.svc",
+	"kubernetes.default.svc.cluster.local",
+	"localhost",
+	"127.0.0.1",
+	"::1",
+	"0.0.0.0",
+	"::",
 }
 
 func getBlockedHTTPHosts() []string {
@@ -447,15 +451,15 @@ func getBlockedHTTPHosts() []string {
 }
 
 var defaultBlockedPrivateIPRanges = []string{
-	// "0.0.0.0/8",
-	// "10.0.0.0/8",
-	// "172.16.0.0/12",
-	// "192.168.0.0/16",
-	// "127.0.0.0/8",
-	// "169.254.0.0/16",
-	// "::1/128",
-	// "fc00::/7",
-	// "fe80::/10",
+	"0.0.0.0/8",
+	"10.0.0.0/8",
+	"172.16.0.0/12",
+	"192.168.0.0/16",
+	"127.0.0.0/8",
+	"169.254.0.0/16",
+	"::1/128",
+	"fc00::/7",
+	"fe80::/10",
 }
 
 func getPrivateIPRanges() []string {

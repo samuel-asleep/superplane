@@ -7,6 +7,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/superplanehq/superplane/pkg/configuration"
 	"github.com/superplanehq/superplane/pkg/core"
+	"github.com/superplanehq/superplane/pkg/database"
 	"github.com/superplanehq/superplane/pkg/grpc/actions"
 	"github.com/superplanehq/superplane/pkg/models"
 	pb "github.com/superplanehq/superplane/pkg/protos/canvases"
@@ -18,7 +19,17 @@ import (
 )
 
 func SerializeCanvas(canvas *models.Canvas, includeStatus bool) (*pb.Canvas, error) {
-	serializedNodes, err := serializeCanvasNodes(canvas)
+	liveVersion, err := models.FindLiveCanvasVersionByCanvasInTransaction(database.Conn(), canvas)
+	if err != nil {
+		return nil, err
+	}
+
+	canvasVersioningEnabled, err := isCanvasVersioningEnabledForCanvas(canvas)
+	if err != nil {
+		return nil, err
+	}
+
+	serializedNodes, err := serializeCanvasNodes(canvas.ID, liveVersion.Nodes)
 	if err != nil {
 		return nil, err
 	}
@@ -36,18 +47,19 @@ func SerializeCanvas(canvas *models.Canvas, includeStatus bool) (*pb.Canvas, err
 	if !includeStatus {
 		return &pb.Canvas{
 			Metadata: &pb.Canvas_Metadata{
-				Id:             canvas.ID.String(),
-				OrganizationId: canvas.OrganizationID.String(),
-				Name:           canvas.Name,
-				Description:    canvas.Description,
-				CreatedAt:      timestamppb.New(*canvas.CreatedAt),
-				UpdatedAt:      timestamppb.New(*canvas.UpdatedAt),
-				CreatedBy:      createdBy,
-				IsTemplate:     canvas.IsTemplate,
+				Id:                      canvas.ID.String(),
+				OrganizationId:          canvas.OrganizationID.String(),
+				Name:                    canvas.Name,
+				Description:             canvas.Description,
+				CreatedAt:               timestamppb.New(*canvas.CreatedAt),
+				UpdatedAt:               timestamppb.New(*canvas.UpdatedAt),
+				CreatedBy:               createdBy,
+				IsTemplate:              canvas.IsTemplate,
+				CanvasVersioningEnabled: canvasVersioningEnabled,
 			},
 			Spec: &pb.Canvas_Spec{
 				Nodes: serializedNodes,
-				Edges: actions.EdgesToProto(canvas.Edges),
+				Edges: actions.EdgesToProto(liveVersion.Edges),
 			},
 			Status: nil,
 		}, nil
@@ -98,18 +110,19 @@ func SerializeCanvas(canvas *models.Canvas, includeStatus bool) (*pb.Canvas, err
 
 	return &pb.Canvas{
 		Metadata: &pb.Canvas_Metadata{
-			Id:             canvas.ID.String(),
-			OrganizationId: canvas.OrganizationID.String(),
-			Name:           canvas.Name,
-			Description:    canvas.Description,
-			CreatedAt:      timestamppb.New(*canvas.CreatedAt),
-			UpdatedAt:      timestamppb.New(*canvas.UpdatedAt),
-			CreatedBy:      createdBy,
-			IsTemplate:     canvas.IsTemplate,
+			Id:                      canvas.ID.String(),
+			OrganizationId:          canvas.OrganizationID.String(),
+			Name:                    canvas.Name,
+			Description:             canvas.Description,
+			CreatedAt:               timestamppb.New(*canvas.CreatedAt),
+			UpdatedAt:               timestamppb.New(*canvas.UpdatedAt),
+			CreatedBy:               createdBy,
+			IsTemplate:              canvas.IsTemplate,
+			CanvasVersioningEnabled: canvasVersioningEnabled,
 		},
 		Spec: &pb.Canvas_Spec{
 			Nodes: serializedNodes,
-			Edges: actions.EdgesToProto(canvas.Edges),
+			Edges: actions.EdgesToProto(liveVersion.Edges),
 		},
 		Status: &pb.Canvas_Status{
 			LastExecutions: serializedExecutions,
@@ -119,13 +132,13 @@ func SerializeCanvas(canvas *models.Canvas, includeStatus bool) (*pb.Canvas, err
 	}, nil
 }
 
-func serializeCanvasNodes(canvas *models.Canvas) ([]*compb.Node, error) {
-	serialized := actions.NodesToProto(canvas.Nodes)
+func serializeCanvasNodes(canvasID uuid.UUID, nodes []models.Node) ([]*compb.Node, error) {
+	serialized := actions.NodesToProto(nodes)
 	if len(serialized) == 0 {
 		return serialized, nil
 	}
 
-	canvasNodes, err := models.FindCanvasNodes(canvas.ID)
+	canvasNodes, err := models.FindCanvasNodes(canvasID)
 	if err != nil {
 		return nil, err
 	}

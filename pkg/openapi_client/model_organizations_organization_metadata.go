@@ -21,11 +21,12 @@ var _ MappedNullable = &OrganizationsOrganizationMetadata{}
 
 // OrganizationsOrganizationMetadata struct for OrganizationsOrganizationMetadata
 type OrganizationsOrganizationMetadata struct {
-	Id          *string    `json:"id,omitempty"`
-	Name        *string    `json:"name,omitempty"`
-	Description *string    `json:"description,omitempty"`
-	CreatedAt   *time.Time `json:"createdAt,omitempty"`
-	UpdatedAt   *time.Time `json:"updatedAt,omitempty"`
+	Id                      *string    `json:"id,omitempty"`
+	Name                    *string    `json:"name,omitempty"`
+	Description             *string    `json:"description,omitempty"`
+	CreatedAt               *time.Time `json:"createdAt,omitempty"`
+	UpdatedAt               *time.Time `json:"updatedAt,omitempty"`
+	CanvasVersioningEnabled *bool      `json:"canvasVersioningEnabled,omitempty"`
 }
 
 // NewOrganizationsOrganizationMetadata instantiates a new OrganizationsOrganizationMetadata object
@@ -205,6 +206,38 @@ func (o *OrganizationsOrganizationMetadata) SetUpdatedAt(v time.Time) {
 	o.UpdatedAt = &v
 }
 
+// GetCanvasVersioningEnabled returns the CanvasVersioningEnabled field value if set, zero value otherwise.
+func (o *OrganizationsOrganizationMetadata) GetCanvasVersioningEnabled() bool {
+	if o == nil || IsNil(o.CanvasVersioningEnabled) {
+		var ret bool
+		return ret
+	}
+	return *o.CanvasVersioningEnabled
+}
+
+// GetCanvasVersioningEnabledOk returns a tuple with the CanvasVersioningEnabled field value if set, nil otherwise
+// and a boolean to check if the value has been set.
+func (o *OrganizationsOrganizationMetadata) GetCanvasVersioningEnabledOk() (*bool, bool) {
+	if o == nil || IsNil(o.CanvasVersioningEnabled) {
+		return nil, false
+	}
+	return o.CanvasVersioningEnabled, true
+}
+
+// HasCanvasVersioningEnabled returns a boolean if a field has been set.
+func (o *OrganizationsOrganizationMetadata) HasCanvasVersioningEnabled() bool {
+	if o != nil && !IsNil(o.CanvasVersioningEnabled) {
+		return true
+	}
+
+	return false
+}
+
+// SetCanvasVersioningEnabled gets a reference to the given bool and assigns it to the CanvasVersioningEnabled field.
+func (o *OrganizationsOrganizationMetadata) SetCanvasVersioningEnabled(v bool) {
+	o.CanvasVersioningEnabled = &v
+}
+
 func (o OrganizationsOrganizationMetadata) MarshalJSON() ([]byte, error) {
 	toSerialize, err := o.ToMap()
 	if err != nil {
@@ -229,6 +262,9 @@ func (o OrganizationsOrganizationMetadata) ToMap() (map[string]interface{}, erro
 	}
 	if !IsNil(o.UpdatedAt) {
 		toSerialize["updatedAt"] = o.UpdatedAt
+	}
+	if !IsNil(o.CanvasVersioningEnabled) {
+		toSerialize["canvasVersioningEnabled"] = o.CanvasVersioningEnabled
 	}
 	return toSerialize, nil
 }

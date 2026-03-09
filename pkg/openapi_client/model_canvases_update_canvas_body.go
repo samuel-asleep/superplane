@@ -20,8 +20,9 @@ var _ MappedNullable = &CanvasesUpdateCanvasBody{}
 
 // CanvasesUpdateCanvasBody struct for CanvasesUpdateCanvasBody
 type CanvasesUpdateCanvasBody struct {
-	Canvas     *CanvasesCanvas           `json:"canvas,omitempty"`
-	AutoLayout *CanvasesCanvasAutoLayout `json:"autoLayout,omitempty"`
+	Name                    *string `json:"name,omitempty"`
+	Description             *string `json:"description,omitempty"`
+	CanvasVersioningEnabled *bool   `json:"canvasVersioningEnabled,omitempty"`
 }
 
 // NewCanvasesUpdateCanvasBody instantiates a new CanvasesUpdateCanvasBody object
@@ -41,68 +42,100 @@ func NewCanvasesUpdateCanvasBodyWithDefaults() *CanvasesUpdateCanvasBody {
 	return &this
 }
 
-// GetCanvas returns the Canvas field value if set, zero value otherwise.
-func (o *CanvasesUpdateCanvasBody) GetCanvas() CanvasesCanvas {
-	if o == nil || IsNil(o.Canvas) {
-		var ret CanvasesCanvas
+// GetName returns the Name field value if set, zero value otherwise.
+func (o *CanvasesUpdateCanvasBody) GetName() string {
+	if o == nil || IsNil(o.Name) {
+		var ret string
 		return ret
 	}
-	return *o.Canvas
+	return *o.Name
 }
 
-// GetCanvasOk returns a tuple with the Canvas field value if set, nil otherwise
+// GetNameOk returns a tuple with the Name field value if set, nil otherwise
 // and a boolean to check if the value has been set.
-func (o *CanvasesUpdateCanvasBody) GetCanvasOk() (*CanvasesCanvas, bool) {
-	if o == nil || IsNil(o.Canvas) {
+func (o *CanvasesUpdateCanvasBody) GetNameOk() (*string, bool) {
+	if o == nil || IsNil(o.Name) {
 		return nil, false
 	}
-	return o.Canvas, true
+	return o.Name, true
 }
 
-// HasCanvas returns a boolean if a field has been set.
-func (o *CanvasesUpdateCanvasBody) HasCanvas() bool {
-	if o != nil && !IsNil(o.Canvas) {
+// HasName returns a boolean if a field has been set.
+func (o *CanvasesUpdateCanvasBody) HasName() bool {
+	if o != nil && !IsNil(o.Name) {
 		return true
 	}
 
 	return false
 }
 
-// SetCanvas gets a reference to the given CanvasesCanvas and assigns it to the Canvas field.
-func (o *CanvasesUpdateCanvasBody) SetCanvas(v CanvasesCanvas) {
-	o.Canvas = &v
+// SetName gets a reference to the given string and assigns it to the Name field.
+func (o *CanvasesUpdateCanvasBody) SetName(v string) {
+	o.Name = &v
 }
 
-// GetAutoLayout returns the AutoLayout field value if set, zero value otherwise.
-func (o *CanvasesUpdateCanvasBody) GetAutoLayout() CanvasesCanvasAutoLayout {
-	if o == nil || IsNil(o.AutoLayout) {
-		var ret CanvasesCanvasAutoLayout
+// GetDescription returns the Description field value if set, zero value otherwise.
+func (o *CanvasesUpdateCanvasBody) GetDescription() string {
+	if o == nil || IsNil(o.Description) {
+		var ret string
 		return ret
 	}
-	return *o.AutoLayout
+	return *o.Description
 }
 
-// GetAutoLayoutOk returns a tuple with the AutoLayout field value if set, nil otherwise
+// GetDescriptionOk returns a tuple with the Description field value if set, nil otherwise
 // and a boolean to check if the value has been set.
-func (o *CanvasesUpdateCanvasBody) GetAutoLayoutOk() (*CanvasesCanvasAutoLayout, bool) {
-	if o == nil || IsNil(o.AutoLayout) {
+func (o *CanvasesUpdateCanvasBody) GetDescriptionOk() (*string, bool) {
+	if o == nil || IsNil(o.Description) {
 		return nil, false
 	}
-	return o.AutoLayout, true
+	return o.Description, true
 }
 
-// HasAutoLayout returns a boolean if a field has been set.
-func (o *CanvasesUpdateCanvasBody) HasAutoLayout() bool {
-	if o != nil && !IsNil(o.AutoLayout) {
+// HasDescription returns a boolean if a field has been set.
+func (o *CanvasesUpdateCanvasBody) HasDescription() bool {
+	if o != nil && !IsNil(o.Description) {
 		return true
 	}
 
 	return false
 }
 
-// SetAutoLayout gets a reference to the given CanvasesCanvasAutoLayout and assigns it to the AutoLayout field.
-func (o *CanvasesUpdateCanvasBody) SetAutoLayout(v CanvasesCanvasAutoLayout) {
-	o.AutoLayout = &v
+// SetDescription gets a reference to the given string and assigns it to the Description field.
+func (o *CanvasesUpdateCanvasBody) SetDescription(v string) {
+	o.Description = &v
+}
+
+// GetCanvasVersioningEnabled returns the CanvasVersioningEnabled field value if set, zero value otherwise.
+func (o *CanvasesUpdateCanvasBody) GetCanvasVersioningEnabled() bool {
+	if o == nil || IsNil(o.CanvasVersioningEnabled) {
+		var ret bool
+		return ret
+	}
+	return *o.CanvasVersioningEnabled
+}
+
+// GetCanvasVersioningEnabledOk returns a tuple with the CanvasVersioningEnabled field value if set, nil otherwise
+// and a boolean to check if the value has been set.
+func (o *CanvasesUpdateCanvasBody) GetCanvasVersioningEnabledOk() (*bool, bool) {
+	if o == nil || IsNil(o.CanvasVersioningEnabled) {
+		return nil, false
+	}
+	return o.CanvasVersioningEnabled, true
+}
+
+// HasCanvasVersioningEnabled returns a boolean if a field has been set.
+func (o *CanvasesUpdateCanvasBody) HasCanvasVersioningEnabled() bool {
+	if o != nil && !IsNil(o.CanvasVersioningEnabled) {
+		return true
+	}
+
+	return false
+}
+
+// SetCanvasVersioningEnabled gets a reference to the given bool and assigns it to the CanvasVersioningEnabled field.
+func (o *CanvasesUpdateCanvasBody) SetCanvasVersioningEnabled(v bool) {
+	o.CanvasVersioningEnabled = &v
 }
 
 func (o CanvasesUpdateCanvasBody) MarshalJSON() ([]byte, error) {
@@ -115,11 +148,14 @@ func (o CanvasesUpdateCanvasBody) MarshalJSON() ([]byte, error) {
 
 func (o CanvasesUpdateCanvasBody) ToMap() (map[string]interface{}, error) {
 	toSerialize := map[string]interface{}{}
-	if !IsNil(o.Canvas) {
-		toSerialize["canvas"] = o.Canvas
+	if !IsNil(o.Name) {
+		toSerialize["name"] = o.Name
 	}
-	if !IsNil(o.AutoLayout) {
-		toSerialize["autoLayout"] = o.AutoLayout
+	if !IsNil(o.Description) {
+		toSerialize["description"] = o.Description
+	}
+	if !IsNil(o.CanvasVersioningEnabled) {
+		toSerialize["canvasVersioningEnabled"] = o.CanvasVersioningEnabled
 	}
 	return toSerialize, nil
 }

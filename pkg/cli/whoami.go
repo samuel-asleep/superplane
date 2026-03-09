@@ -17,34 +17,50 @@ func (w *whoamiCommand) Execute(ctx core.CommandContext) error {
 	}
 
 	organizationLabel := response.GetOrganizationId()
+	var canvasVersioningEnabled *bool
 	if response.HasOrganizationId() && response.GetOrganizationId() != "" {
 		orgResponse, _, err := ctx.API.OrganizationAPI.
 			OrganizationsDescribeOrganization(ctx.Context, response.GetOrganizationId()).
 			Execute()
 
-		if err == nil &&
-			orgResponse.Organization.Metadata != nil &&
-			orgResponse.Organization.Metadata.Name != nil &&
-			*orgResponse.Organization.Metadata.Name != "" {
-			organizationLabel = *orgResponse.Organization.Metadata.Name
+		if err == nil && orgResponse != nil && orgResponse.Organization != nil && orgResponse.Organization.Metadata != nil {
+			metadata := orgResponse.Organization.Metadata
+			if metadata.Name != nil && *metadata.Name != "" {
+				organizationLabel = *metadata.Name
+			}
+
+			if enabled, ok := metadata.GetCanvasVersioningEnabledOk(); ok {
+				canvasVersioningEnabled = enabled
+			}
 		}
 	}
 
 	if ctx.Renderer.IsText() {
 		return ctx.Renderer.RenderText(func(stdout io.Writer) error {
+			versioningLabel := "unknown"
+			if canvasVersioningEnabled != nil {
+				if *canvasVersioningEnabled {
+					versioningLabel = "enabled"
+				} else {
+					versioningLabel = "disabled"
+				}
+			}
+
 			_, _ = fmt.Fprintf(stdout, "ID: %s\n", response.GetId())
 			_, _ = fmt.Fprintf(stdout, "Email: %s\n", response.GetEmail())
 			_, _ = fmt.Fprintf(stdout, "Organization ID: %s\n", response.GetOrganizationId())
 			_, _ = fmt.Fprintf(stdout, "Organization: %s\n", organizationLabel)
+			_, _ = fmt.Fprintf(stdout, "Canvas Versioning: %s\n", versioningLabel)
 			return nil
 		})
 	}
 
 	return ctx.Renderer.Render(map[string]any{
-		"id":               response.GetId(),
-		"email":            response.GetEmail(),
-		"organizationId":   response.GetOrganizationId(),
-		"organizationName": organizationLabel,
+		"id":                      response.GetId(),
+		"email":                   response.GetEmail(),
+		"organizationId":          response.GetOrganizationId(),
+		"organizationName":        organizationLabel,
+		"canvasVersioningEnabled": canvasVersioningEnabled,
 	})
 }
 
